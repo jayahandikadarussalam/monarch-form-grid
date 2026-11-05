@@ -1205,7 +1205,7 @@ public class FormGridCustom extends Element implements FormBuilderPaletteElement
 
     @Override
     public String getFormBuilderIcon() {
-        return "<i class=\"fas fa-text-height\"></i>";
+        return "<i class=\"fas fa-list-ol\"></i>";
     }
 
     @Override

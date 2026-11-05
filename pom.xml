@@ -2,10 +2,10 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
     <modelVersion>4.0.0</modelVersion>
     <groupId>com.monarch.shadow</groupId>
-    <artifactId>form-element</artifactId>
+    <artifactId>shadow-form-grid</artifactId>
     <packaging>bundle</packaging>
     <version>2.0.9</version>
-    <name>form-element</name>
+    <name>shadow-form-grid</name>
     <url>http://www.joget.org</url>
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
