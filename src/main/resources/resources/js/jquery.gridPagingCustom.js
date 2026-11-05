@@ -14,7 +14,7 @@
                 }
 
                 var thisObj = $(this);
-                $(thisObj).find('table').data("pagingOptions", options);
+                $(thisObj).children("table").data("pagingOptions", options);
 
                 methods.refresh.call(thisObj);
 
@@ -30,7 +30,7 @@
 
         enableSorting: function() {
             var thisObj = $(this);
-            var $table = $(thisObj).find("table");
+            var $table = $(thisObj).children("table");
 
             var $headers = $table.find("th").filter(function() {
                 return $(this).attr("id") != undefined;
@@ -106,7 +106,7 @@
         navigator: function() {
             var thisObj = $(this);
 
-            var table = $(thisObj).find("table");
+            var table = $(thisObj).children("table");
             var options = $(table).data("pagingOptions");
             var size = $(table).find("tr.grid-row").not(".fg-hidden").length;
 
@@ -163,7 +163,7 @@
 
             $(thisObj).find(".pg-navigator .pg-current").removeClass("pg-current");
 
-            var table = $(thisObj).find("table");
+            var table = $(thisObj).children("table");
             var options = $(table).data("pagingOptions");
 
             var start = options.size * (page - 1);

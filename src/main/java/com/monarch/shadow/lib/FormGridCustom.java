@@ -41,7 +41,7 @@ import java.util.*;
 
 public class FormGridCustom extends Element implements FormBuilderPaletteElement, FormContainer, GridInnerDataRetriever, PwaOfflineResources, PwaOfflineReadonly {
     private static final String MESSAGE_PATH = "messages/FormGridCustom";
-    private static final String VERSION = "2.0.9";
+    private static final String VERSION = "2.1.2";
 
     protected Map<FormData, FormRowSet> cachedRowSet = new HashMap<>();
     protected Map<String, FormData> formDatas = new HashMap<>();
@@ -92,6 +92,14 @@ public class FormGridCustom extends Element implements FormBuilderPaletteElement
 
         String json = getSelectedFormJson();
         dataModel.put("json", json);
+        boolean importEnabled = "true".equals(getPropertyString("enableImport"))
+                && !FormUtil.isReadonly(this, formData)
+                && !"true".equals(getPropertyString("disabledAdd"));
+        dataModel.put("importEnabled", importEnabled);
+        if (importEnabled) {
+            dataModel.put("importColumnsJson", getImportColumnsJson(headers, formData));
+            dataModel.put("importLabels", getImportLabels());
+        }
 
         if (!FormUtil.isReadonly(this, formData)) {
             dataModel.put("customDecorator", getDecorator());
@@ -143,6 +151,58 @@ public class FormGridCustom extends Element implements FormBuilderPaletteElement
         }
         this.cachedRowSet.put(formData, rowSet);
         return rowSet;
+    }
+
+    protected Map<String, String> getImportLabels() {
+        Map<String, String> labels = new LinkedHashMap<>();
+        String[][] defaults = {
+            {"settings", "Import Data"},
+            {"intro", "Choose a file, then review the rows before importing."},
+            {"open", "Import Excel / CSV"},
+            {"template", "Download CSV Template"},
+            {"file", "Excel / CSV file"},
+            {"formats", ".xlsx, .xls or .csv. Maximum 10 MB."},
+            {"sheet", "Worksheet"},
+            {"confirm", "Import Rows"},
+            {"cancel", "Cancel"},
+            {"guidelines", "File format and columns"},
+            {"help", "Use configured Field IDs or labels as headers. Leave File/Image cells empty. Imported rows are appended; save the form to persist them."}
+        };
+        for (String[] entry : defaults) {
+            String key = "form.formgrid.import." + entry[0];
+            String label = AppPluginUtil.getMessage(key, getClassName(), MESSAGE_PATH);
+            if (label == null || label.trim().isEmpty() || key.equals(label) || label.contains("@@")) {
+                label = entry[1];
+            }
+            labels.put(entry[0], label);
+        }
+        return labels;
+    }
+
+    // Use configured field IDs, never database column names or uploaded record IDs.
+    protected String getImportColumnsJson(Map<String, Map<String, Object>> headers, FormData formData) {
+        JSONArray columns = new JSONArray();
+        Form innerForm = getForm();
+        for (Map.Entry<String, Map<String, Object>> entry : headers.entrySet()) {
+            Map<String, Object> header = entry.getValue();
+            JSONObject column = new JSONObject();
+            column.put("id", entry.getKey());
+            column.put("label", header.get("label"));
+            column.put("type", header.get("formatType"));
+            Element field = innerForm == null ? null : FormUtil.findElement(entry.getKey(), innerForm, formData);
+            if (field != null && "date".equals(header.get("formatType"))) {
+                String dateFormat = field.getPropertyString("dataFormat");
+                dateFormat = dateFormat.isEmpty() ? "yyyy-MM-dd" : dateFormat;
+                String pickerType = field.getPropertyString("datePickerType");
+                String timeFormat = "true".equals(field.getPropertyString("format24hr")) ? "HH:mm" : "hh:mm a";
+                if ("dateTime".equals(pickerType)) dateFormat += " " + timeFormat;
+                if ("timeOnly".equals(pickerType)) dateFormat = timeFormat;
+                if ("utcdateTime".equals(pickerType)) dateFormat = "yyyy-MM-dd HH:mm";
+                column.put("dateFormat", dateFormat);
+            }
+            columns.put(column);
+        }
+        return columns.toString();
     }
 
     public String formatColumn(String name, Map header, String recordId, String value, String appId, Long appVersion, String contextPath) {
@@ -1294,6 +1354,9 @@ public class FormGridCustom extends Element implements FormBuilderPaletteElement
         urls.add(contextPath + "/plugin/com.monarch.shadow.lib.FormGridCustom/js/jquery.gridPagingCustom.js?v=" + getVersion());
         urls.add(contextPath + "/plugin/com.monarch.shadow.lib.FormGridCustom/js/jquery.formGridCustom.remake.js?v=" + getVersion());
         urls.add(contextPath + "/plugin/com.monarch.shadow.lib.FormGridCustom/js/jquery.utils.js?v=" + getVersion());
+        urls.add(contextPath + "/plugin/com.monarch.shadow.lib.FormGridCustom/js/formGridImport.js?v=" + getVersion());
+        urls.add(contextPath + "/plugin/com.monarch.shadow.lib.FormGridCustom/js/jquery.formGridImport.js?v=" + getVersion());
+        urls.add(contextPath + "/plugin/com.monarch.shadow.lib.FormGridCustom/js/vendor/xlsx.full.min.js?v=" + getVersion());
         urls.add(contextPath + "/plugin/com.monarch.shadow.lib.FormGridCustom/css/formGridStyle.css?v=" + getVersion());
 
         return urls;

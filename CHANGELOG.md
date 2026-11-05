@@ -1,5 +1,30 @@
 # Changelog
 
+## [2.1.2] - 2026-11-05
+
+### Diperbaiki
+- Download CSV Template menghentikan propagasi klik link unduhan agar URL `blob:` tidak diarahkan ke router userview dan menyebabkan HTTP 400.
+- Pengujian download memastikan header mengikuti Field ID dan urutan Columns pada setiap grid, termasuk kolom tersembunyi yang dapat diimpor; File/Image dan field sistem tetap dikecualikan.
+
+## [2.1.1] - 2026-11-05
+
+### Diperbaiki
+- Label import diterjemahkan melalui Java sebelum render FreeMarker, dengan fallback teks agar token `@@...@@` tidak terlihat pada form.
+- Panel import ditata dengan judul, tombol template, field file/sheet terpisah, panduan yang dapat dibuka, dan tombol aksi di footer.
+- Ukuran tombol, input file, jarak, serta tata letak responsif disesuaikan dengan form; status dan pratinjau kosong disembunyikan.
+
+## [2.1.0] - 2026-11-05
+
+### Ditambahkan
+- Import XLSX, XLS, dan CSV opsional melalui tab Import Data pada properti Shadow Form Grid.
+- Pemetaan header dinamis ke Columns melalui Field ID, label, atau awalan database `c_`; pilihan worksheet, pratinjau, dan template CSV.
+- Import menambah baris dengan UUID baru, pemeriksaan Unique Column dan batas baris untuk seluruh batch sebelum konfirmasi.
+- Konversi tanggal Excel mengikuti Data Format field tanggal form anak; file/image diunggah melalui Add/Edit Row.
+- Parser SheetJS CE 0.20.3 dibundel untuk pemrosesan lokal di browser; pengujian parser, UI, dan template.
+
+### Diperbaiki
+- Selector tabel utama pada grid dan paging diisolasi agar tidak menangani tabel pratinjau import.
+
 Semua perubahan penting pada plugin ini akan didokumentasikan di sini.
 
 Format berdasarkan [Semantic Versioning](https://semver.org/).

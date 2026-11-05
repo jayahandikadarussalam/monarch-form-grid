@@ -1,13 +1,16 @@
 <#assign showCheckbox = element.properties.disabledDelete! != 'true' && element.properties.readonly! != 'true' && element.properties.checkboxDisable! != 'true'>
 <#assign showRowNumber = element.properties.showRowNumber! == 'true'>
+<#assign importText = importLabels!{}>
 
 <div class="form-cell full_width_field" ${elementMetaData!}>
     <#if !(request.getAttribute("com.monarch.shadow.lib.FormGridCustom")??) >
-        <link rel="stylesheet" type="text/css" href="${request.contextPath}/plugin/com.monarch.shadow.lib.FormGridCustom/css/formGridStyle.css?v=${pluginVersion!'2.0.9'}" />
-        <script type="text/javascript" src="${request.contextPath}/plugin/com.monarch.shadow.lib.FormGridCustom/js/jquery.formGridCustom.js?v=${pluginVersion!'2.0.9'}"></script>
-        <script type="text/javascript" src="${request.contextPath}/plugin/com.monarch.shadow.lib.FormGridCustom/js/jquery.gridPagingCustom.js?v=${pluginVersion!'2.0.9'}"></script>
-        <script type="text/javascript" src="${request.contextPath}/plugin/com.monarch.shadow.lib.FormGridCustom/js/jquery.formGridCustom.remake.js?v=${pluginVersion!'2.0.9'}"></script>
-        <script type="text/javascript" src="${request.contextPath}/plugin/com.monarch.shadow.lib.FormGridCustom/js/jquery.utils.js?v=${pluginVersion!'2.0.9'}"></script>
+        <link rel="stylesheet" type="text/css" href="${request.contextPath}/plugin/com.monarch.shadow.lib.FormGridCustom/css/formGridStyle.css?v=${pluginVersion!'2.1.2'}" />
+        <script type="text/javascript" src="${request.contextPath}/plugin/com.monarch.shadow.lib.FormGridCustom/js/jquery.formGridCustom.js?v=${pluginVersion!'2.1.2'}"></script>
+        <script type="text/javascript" src="${request.contextPath}/plugin/com.monarch.shadow.lib.FormGridCustom/js/jquery.gridPagingCustom.js?v=${pluginVersion!'2.1.2'}"></script>
+        <script type="text/javascript" src="${request.contextPath}/plugin/com.monarch.shadow.lib.FormGridCustom/js/jquery.formGridCustom.remake.js?v=${pluginVersion!'2.1.2'}"></script>
+        <script type="text/javascript" src="${request.contextPath}/plugin/com.monarch.shadow.lib.FormGridCustom/js/jquery.utils.js?v=${pluginVersion!'2.1.2'}"></script>
+        <script type="text/javascript" src="${request.contextPath}/plugin/com.monarch.shadow.lib.FormGridCustom/js/formGridImport.js?v=${pluginVersion!'2.1.2'}"></script>
+        <script type="text/javascript" src="${request.contextPath}/plugin/com.monarch.shadow.lib.FormGridCustom/js/jquery.formGridImport.js?v=${pluginVersion!'2.1.2'}"></script>
     </#if>
     <script type="text/javascript">
         $(document).ready(function() {
@@ -28,6 +31,13 @@
             grid.formGridCustom("initPopupDialog", {contextPath: '${request.contextPath}', title: '@@form.formgrid.addEntry@@' <#if requestParams??>, requestParams: ${requestParams}</#if>});
 
             grid.gridPagingCustom({customSize: '${element.properties.pageSize!}' <#if element.properties.enableSorting! == 'true'>, dataSorting: true</#if>});
+            <#if importEnabled!false>
+                grid.formGridImport({
+                    columns: JSON.parse(grid.children('.formgrid-import-columns').val()),
+                    sortField: '<#if element.properties.enableSorting! == "true">${element.properties.sortField!?js_string}</#if>',
+                    libraryUrl: '${request.contextPath}/plugin/com.monarch.shadow.lib.FormGridCustom/js/vendor/xlsx.full.min.js?v=${pluginVersion!"2.1.2"}'
+                });
+            </#if>
         });
 
         function formgrid_${elementParamName!}_${element.properties.elementUniqueKey!}_add(args){
@@ -55,6 +65,9 @@
         <input type="hidden" disabled="disabled" id="nonce" value="${nonceForm!?html}">
         <input type="hidden" disabled="disabled" class="formDefKeys" value="${formDefKeys!}">
         <input type="hidden" disabled="disabled" id="popupDuplicate" class="popupDuplicate" value="${element.properties.showPopupDuplicate!}">
+        <#if importEnabled!false>
+            <input type="hidden" disabled="disabled" class="formgrid-import-columns" value="${importColumnsJson!?html}">
+        </#if>
         <#if showCheckbox>
             <button type="button" class="btn-icon delete_btn formgrid-custom-delete" id="${elementParamName!}_${element.properties.elementUniqueKey!}_delete" title="${(deleteSelectedRowsLabel!'Delete Selected Rows')?html}" aria-label="${(deleteSelectedRowsLabel!'Delete Selected Rows')?html}" style="display:none;"><i class="fas fa-trash" aria-hidden="true"></i></button>
         </#if>
@@ -131,6 +144,39 @@
         <p class="pg-navigator"></p>
         <#if element.properties.readonly! != 'true' && element.properties.disabledAdd! != 'true'>
             <button type="button" class="btn btn-primary grid-action-add text-decoration-none formgrid-custom-add" style="position:relative;bottom:0px;padding:6px 12px;height:fit-content;width:fit-content;opacity:1;">${addLabelMessage!'<i class="fas fa-plus"></i> Add'}</button>
+        </#if>
+        <#if importEnabled!false>
+            <button type="button" class="btn btn-secondary formgrid-import-open" aria-expanded="false" aria-controls="${elementParamName!}_${element.properties.elementUniqueKey!}_import_panel"><i class="fas fa-file-import" aria-hidden="true"></i> ${(importText.open!'Import Excel / CSV')?html}</button>
+            <div class="formgrid-import-panel" id="${elementParamName!}_${element.properties.elementUniqueKey!}_import_panel" role="region" aria-labelledby="${elementParamName!}_${element.properties.elementUniqueKey!}_import_title" hidden>
+                <div class="formgrid-import-heading">
+                    <div>
+                        <h4 id="${elementParamName!}_${element.properties.elementUniqueKey!}_import_title">${(importText.settings!'Import Data')?html}</h4>
+                        <p>${(importText.intro!'Choose a file, then review the rows before importing.')?html}</p>
+                    </div>
+                    <button type="button" class="btn btn-secondary formgrid-import-template"><i class="fas fa-download" aria-hidden="true"></i> ${(importText.template!'Download CSV Template')?html}</button>
+                </div>
+                <div class="formgrid-import-fields">
+                    <label class="formgrid-import-file-label">
+                        <span>${(importText.file!'Excel / CSV file')?html}</span>
+                        <input type="file" class="formgrid-import-file" accept=".xlsx,.xls,.csv">
+                        <small>${(importText.formats!'.xlsx, .xls or .csv. Maximum 10 MB.')?html}</small>
+                    </label>
+                    <label class="formgrid-import-sheet-label" hidden>
+                        <span>${(importText.sheet!'Worksheet')?html}</span>
+                        <select class="formgrid-import-sheet"></select>
+                    </label>
+                </div>
+                <details class="formgrid-import-guidelines">
+                    <summary>${(importText.guidelines!'File format and columns')?html}</summary>
+                    <p>${(importText.help!'Use configured Field IDs or labels as headers. Leave File/Image cells empty. Imported rows are appended; save the form to persist them.')?html}</p>
+                </details>
+                <p class="formgrid-import-status" role="status" aria-live="polite"></p>
+                <div class="formgrid-import-preview"></div>
+                <div class="formgrid-import-footer">
+                    <button type="button" class="btn btn-secondary formgrid-import-cancel">${(importText.cancel!'Cancel')?html}</button>
+                    <button type="button" class="btn btn-primary formgrid-import-confirm" disabled><i class="fas fa-file-import" aria-hidden="true"></i> ${(importText.confirm!'Import Rows')?html}</button>
+                </div>
+            </div>
         </#if>
     </div>
 </div>

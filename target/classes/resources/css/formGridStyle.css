@@ -1,4 +1,96 @@
 /* Let the active Joget theme supply colors, typography, borders and buttons. */
+.grid.formgrid-custom > .formgrid-import-open,
+.grid.formgrid-custom .formgrid-import-panel .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 36px;
+    height: auto;
+    width: auto;
+    padding: 6px 12px;
+    margin: 0;
+    font: inherit;
+    line-height: 1.4;
+    text-decoration: none;
+    white-space: normal;
+    position: static;
+}
+.grid.formgrid-custom > .formgrid-import-open { margin-left: 8px; vertical-align: middle; }
+.grid.formgrid-custom .formgrid-import-panel {
+    margin-top: 12px;
+    padding: 20px;
+    border: 1px solid #e2e5e9;
+    border-radius: 8px;
+    background: rgba(127, 127, 127, 0.035);
+    box-sizing: border-box;
+}
+.grid.formgrid-custom .formgrid-import-panel[hidden],
+.grid.formgrid-custom .formgrid-import-sheet-label[hidden] { display: none; }
+.formgrid-custom .formgrid-import-heading,
+.formgrid-custom .formgrid-import-fields { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 20px; }
+.formgrid-custom .formgrid-import-heading { justify-content: space-between; margin-bottom: 20px; }
+.formgrid-custom .formgrid-import-heading > div { flex: 1 1 240px; }
+.grid.formgrid-custom .formgrid-import-heading h4 { margin: 0 0 4px; padding: 0; font-size: 1em; line-height: 1.5; font-weight: 600; }
+.grid.formgrid-custom .formgrid-import-heading p { margin: 0; padding: 0; opacity: 0.75; line-height: 1.5; }
+.grid.formgrid-custom .formgrid-import-file-label,
+.grid.formgrid-custom .formgrid-import-sheet-label {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    float: none;
+    width: auto;
+    min-width: 0;
+    max-width: 100%;
+    margin: 0;
+    padding: 0;
+    text-align: left;
+    font: inherit;
+}
+.formgrid-custom .formgrid-import-file-label { flex: 1 1 280px; }
+.formgrid-custom .formgrid-import-sheet-label { flex: 0 1 240px; }
+.formgrid-custom .formgrid-import-fields label > span { font-weight: 600; }
+.grid.formgrid-custom .formgrid-import-file,
+.grid.formgrid-custom .formgrid-import-sheet {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    min-height: 40px;
+    height: auto;
+    margin: 0;
+    padding: 6px 10px;
+    border: 1px solid #d4d9df;
+    border-radius: 6px;
+    box-sizing: border-box;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    line-height: 1.5;
+}
+.formgrid-custom .formgrid-import-file::file-selector-button {
+    margin-right: 12px;
+    padding: 2px 10px;
+    border: 1px solid #d4d9df;
+    border-radius: 4px;
+    background: rgba(127, 127, 127, 0.08);
+    color: inherit;
+    font: inherit;
+    cursor: pointer;
+}
+.formgrid-custom .formgrid-import-file-label small { opacity: 0.7; font-size: 0.85em; }
+.formgrid-custom .formgrid-import-guidelines { margin-top: 16px; line-height: 1.5; }
+.formgrid-custom .formgrid-import-guidelines summary { cursor: pointer; }
+.grid.formgrid-custom .formgrid-import-guidelines p { margin: 8px 0 0; max-width: 80ch; }
+.grid.formgrid-custom .formgrid-import-status { margin: 16px 0 0; line-height: 1.5; }
+.grid.formgrid-custom .formgrid-import-status:empty,
+.grid.formgrid-custom .formgrid-import-preview:empty { display: none; }
+.formgrid-custom .formgrid-import-preview { max-height: 320px; overflow: auto; margin-top: 16px; }
+.formgrid-custom .formgrid-import-preview table { width: 100%; }
+.formgrid-custom .formgrid-import-preview th,
+.formgrid-custom .formgrid-import-preview td { padding: 8px; border: 1px solid #ddd; white-space: pre-wrap; overflow-wrap: anywhere; }
+.formgrid-custom .formgrid-import-footer { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; margin-top: 20px; padding-top: 16px; border-top: 1px solid #e2e5e9; }
+.grid.formgrid-custom .formgrid-import-confirm:disabled { opacity: 0.5; cursor: default; }
 .grid.formgrid-custom {
     max-width: 100%;
     overflow-x: auto;

@@ -1,0 +1,6 @@
+{
+  "name": "shadow-form-grid-import-tests",
+  "private": true,
+  "scripts": {"test": "node --test src/test/js/*.test.cjs"},
+  "devDependencies": {"jquery": "3.7.1", "jsdom": "26.1.0"}
+}

@@ -104,6 +104,19 @@
     ]
   },
   {
+    "title": "@@form.formgrid.import.settings@@",
+    "properties": [
+      {
+        "name": "enableImport",
+        "label": "@@form.formgrid.import.enable@@",
+        "description": "@@form.formgrid.import.description@@",
+        "type": "checkbox",
+        "value": "false",
+        "options": [{"value": "true", "label": ""}]
+      }
+    ]
+  },
+  {
     "title" : "@@form.formgrid.ui@@",
     "properties" : [
       {

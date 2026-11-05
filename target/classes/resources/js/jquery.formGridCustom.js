@@ -9,10 +9,10 @@
 
             return this.each(function(){
                 var thisObj = $(this);
-                $(this).find("table").data("options", args.options);
+                $(this).children("table").data("options", args.options);
 
                 if (jQuery.browser && jQuery.browser.msie && jQuery.browser.version === '9.0'){
-                    var table = $(this).find("table");
+                    var table = $(this).children("table");
                     var expr = new RegExp('>[ \t\r\n\v\f]*<', 'g');
                     var response_html_fixed = table.html().replace(expr, '><'); //A disgusting hack for ie9. Removes space between open and close <td> tags
                     $(table).html(response_html_fixed.trim());
@@ -22,7 +22,7 @@
                     methods.decorateRow(row);
                     methods.updateRowIndex(row, rowIndex);
                 });
-                methods.disabledMoveAction($(this).find('table'));
+                methods.disabledMoveAction($(this).children("table"));
 
                 // Bind the server-rendered button, including builder previews.
                 var addButton = thisObj.children(".formgrid-custom-add");
@@ -262,7 +262,7 @@
 
                 if (methods.checkDuplicate(this, args) && !$(this).hasClass("readonly")) {
                     // get table
-                    var table = $(this).find("table");
+                    var table = $(this).children("table");
                     var row = $(table).find("#"+args.rowId);
 
                     methods.fillValue(this, row, args.result);
@@ -607,7 +607,7 @@
                         }catch(e){}
                     } else if (type != undefined && type == "options" && format != undefined && format != "" && value != "") {
                         try {
-                            var options = $(element).find("table").data("options");
+                            var options = $(element).children("table").data("options");
                             var values = value.split(";");
                             var temp = [];
                             if (options[column]['OPTIONS_AJAX_BINDER_DATA'] !== undefined) {
@@ -652,7 +652,7 @@
                                                 }
                                             }
 
-                                            $(element).find("table").data("options", options);
+                                            $(element).children("table").data("options", options);
 
                                             value = temp.join(", ");
 
@@ -724,7 +724,7 @@
         refreshIndex: function() {
             return this.each(function(){
                 var thisObj = $(this);
-                var table = thisObj.find("table");
+                var table = thisObj.children("table");
 
                 methods.updateAllRowIndex(table);
                 methods.disabledMoveAction(table);
