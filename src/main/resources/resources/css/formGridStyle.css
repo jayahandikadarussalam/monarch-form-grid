@@ -1,0 +1,131 @@
+/* Let the active Joget theme supply colors, typography, borders and buttons. */
+.grid.formgrid-custom {
+    max-width: 100%;
+    overflow-x: auto;
+}
+
+.formgrid-custom > table {
+    width: 100%;
+}
+
+.formgrid-custom .td-checkbox .tablesaw-cell-label {
+    display: none;
+}
+
+.grid.formgrid-custom > table .grid-action-header,
+.grid.formgrid-custom > table .grid-action-cell {
+    width: 1%;
+    white-space: nowrap;
+    vertical-align: middle;
+}
+
+.formgrid-custom .grid-row-actions,
+.formgrid-custom .grid-reorder-buttons,
+.formgrid-custom .grid-edit-buttons {
+    display: flex;
+    align-items: center;
+    flex-wrap: nowrap;
+    flex-shrink: 0;
+}
+
+.formgrid-custom .grid-row-actions {
+    justify-content: flex-end;
+    gap: 12px;
+    width: max-content;
+    margin-inline-start: auto;
+}
+
+.formgrid-custom .grid-reorder-buttons {
+    gap: 2px;
+}
+
+.formgrid-custom .grid-edit-buttons {
+    gap: 6px;
+}
+
+/* Match the Monarch repeater's icon buttons without affecting other Joget grids. */
+.grid.formgrid-custom .grid-row-actions .grid-row-action,
+.grid.formgrid-custom > .formgrid-custom-delete {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 32px;
+    width: 32px;
+    min-width: 32px;
+    height: 32px;
+    min-height: 32px;
+    padding: 0 !important;
+    margin: 0 !important;
+    border: 0 !important;
+    border-radius: 6px;
+    background: transparent !important;
+    color: #6b7280 !important;
+    box-shadow: none !important;
+    font: inherit;
+    font-size: 15px;
+    line-height: 1;
+    cursor: pointer;
+    text-decoration: none;
+    opacity: 1;
+}
+
+.grid.formgrid-custom .grid-row-actions .grid-row-action::before,
+.grid.formgrid-custom .grid-row-actions .grid-row-action::after {
+    content: none !important;
+}
+
+.grid.formgrid-custom .grid-row-action:hover:not(:disabled) {
+    background: #e5e7eb !important;
+    color: #374151 !important;
+}
+
+.grid.formgrid-custom .grid-row-action.grid-action-delete,
+.grid.formgrid-custom > .formgrid-custom-delete {
+    color: #dc2626 !important;
+}
+
+.grid.formgrid-custom .grid-row-action.grid-action-delete:hover,
+.grid.formgrid-custom > .formgrid-custom-delete:hover {
+    background: #fee2e2 !important;
+}
+
+.grid.formgrid-custom .grid-row-action.grid-action-duplicate:hover {
+    background: #e0e7ff !important;
+    color: #4f46e5 !important;
+}
+
+.grid.formgrid-custom .grid-row-action:disabled {
+    opacity: 0.3;
+    cursor: default;
+}
+
+.grid.formgrid-custom .grid-row-action:focus-visible,
+.grid.formgrid-custom > .formgrid-custom-delete:focus-visible {
+    outline: 2px solid #6366f1;
+    outline-offset: 2px;
+}
+
+.grid.formgrid-custom.readonly .grid-row-actions .grid-action-duplicate,
+.grid.formgrid-custom.disabled-duplicate .grid-row-actions .grid-action-duplicate,
+.formgrid-custom.readonly > .formgrid-custom-add,
+.formgrid-custom.disabledAdd > .formgrid-custom-add,
+.grid.formgrid-custom.readonly .grid-row-actions .grid-action-delete,
+.grid.formgrid-custom.disabledDelete .grid-row-actions .grid-action-delete,
+.grid.formgrid-custom:not(.enableSorting) .grid-row-actions .grid-reorder-buttons,
+.grid.formgrid-custom.readonly .grid-row-actions .grid-reorder-buttons {
+    display: none;
+}
+
+.formgrid-custom > .grid-validation-error {
+    margin-bottom: 0.5em;
+}
+
+.formgrid-custom .pg-navigator .pg-normal,
+.formgrid-custom .pg-navigator .pg-prev,
+.formgrid-custom .pg-navigator .pg-next {
+    cursor: pointer;
+}
+
+.formgrid-custom .pg-navigator .pg-current {
+    font-weight: bold;
+}
