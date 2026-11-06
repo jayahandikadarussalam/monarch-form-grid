@@ -29,11 +29,17 @@ function fixture(id = 'gridA', name = 'items') {
             <input type="file" class="formgrid-import-file">
             <label class="formgrid-import-sheet-label" hidden><select class="formgrid-import-sheet"></select></label>
             <p class="formgrid-import-status"></p><div class="formgrid-import-preview"></div>
+            <div class="formgrid-import-pagination" hidden>
+                <select class="formgrid-import-page-size">${[10,20,30,40,50,60,70,80,90,100].map(n=>`<option value="${n}">${n}</option>`).join('')}</select>
+                <span class="formgrid-import-page-info"></span>
+                <button type="button" class="formgrid-import-previous" disabled>Previous</button>
+                <button type="button" class="formgrid-import-next" disabled>Next</button>
+            </div>
             <button type="button" class="formgrid-import-confirm" disabled>Confirm</button>
             <button type="button" class="formgrid-import-cancel">Cancel</button>
         </div></div>`;
 }
-function setup(columnsByGrid = {}) {
+function setup(columnsByGrid = {}, previewSizes = {}) {
     const dom = new JSDOM(`<form>${fixture()}${fixture('gridB','other')}</form>`, {runScripts:'outside-only', url:'https://example.test/jw'});
     const window = dom.window, $ = jquery(window);
     window.jQuery = window.$ = $;
@@ -51,7 +57,7 @@ function setup(columnsByGrid = {}) {
     const grids = $('#gridA,#gridB');
     grids.formGridCustom({messages:{},options:{}}).gridPagingCustom({customSize:'1', dataSorting:true});
     grids.each(function() {
-        $(this).formGridImport({columns:columnsByGrid[this.id] || [{id:'name',type:'text',label:'Name'}, {id:'date',type:'date',label:'Date'}],sortField:'sort',libraryUrl:'/parser.js'});
+        $(this).formGridImport({columns:columnsByGrid[this.id] || [{id:'name',type:'text',label:'Name'}, {id:'date',type:'date',label:'Date'}],sortField:'sort',previewPageSize:previewSizes[this.id],libraryUrl:'/parser.js'});
     });
     return {window,$,dom,grid:$('#gridA'),other:$('#gridB'),previousParser};
 }
@@ -176,19 +182,83 @@ test('template download preserves each grid column order without entering uservi
     };
     grid.find('.formgrid-import-template')[0].click();
     other.find('.formgrid-import-template')[0].click();
+    await waitUntil(()=>downloads.length === 2);
     assert.equal(routedLinks,0);
     assert.equal(submissions,0);
     assert.equal(downloads.length,2);
-    assert(downloads.every(d=>d.href.startsWith('blob:') && d.filename.endsWith('.csv') && !d.prevented));
+    assert(downloads.every(d=>d.href.startsWith('blob:') && d.filename.endsWith('.xlsx') && !d.prevented));
+    assert(blobs.every(blob=>blob.type === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'));
     assert.equal(window.document.querySelectorAll('a[download]').length,0);
     const read = blob => new Promise((resolve,reject) => {
         const reader = new window.FileReader();
-        reader.onload = () => resolve(reader.result.replace(/^\uFEFF/,''));
+        reader.onload = () => {
+            const bytes = new Uint8Array(reader.result);
+            assert.equal(bytes[0],0x50); // A real XLSX ZIP file, rather than CSV renamed to .xlsx.
+            assert.equal(bytes[1],0x4b);
+            const wb = XLSX.read(bytes,{type:'array'});
+            resolve(XLSX.utils.sheet_to_json(wb.Sheets.Import_Data,{header:1}));
+        };
         reader.onerror = reject;
-        reader.readAsText(blob);
+        reader.readAsArrayBuffer(blob);
     });
-    assert.equal(await read(blobs[0]), '"date","name","select"\r\n');
-    assert.equal(await read(blobs[1]), '"product_code","quantity","internal_note"\r\n');
+    assert.deepEqual(await read(blobs[0]), [['date','name','select']]);
+    assert.deepEqual(await read(blobs[1]), [['product_code','quantity','internal_note']]);
     assert.equal(dataRows(grid).length,0);
     assert.equal(dataRows(other).length,0);
+});
+
+test('preview pages follow developer settings, allow 10-100 rows and import the whole batch', async t => {
+    const {grid,other,dom} = setup({}, {gridA:'30',gridB:'20'});
+    t.after(()=>dom.window.close());
+    grid.children('#validateMaxRow').val('200');
+    other.children('#validateMaxRow').val('200');
+    const csv = 'name\n' + Array.from({length:105},(_,i)=>'Person '+(i+1)).join('\n');
+    await chooseFile(grid,csv);
+    assert.equal(grid.find('.formgrid-import-preview tbody tr').length,30);
+    assert.equal(grid.find('.formgrid-import-page-size').val(),'30');
+    assert.equal(grid.find('.formgrid-import-pagination').prop('hidden'),false);
+    assert.equal(grid.find('.formgrid-import-previous').prop('disabled'),true);
+    grid.find('.formgrid-import-next').trigger('click');
+    assert.equal(grid.find('.formgrid-import-preview tbody tr').first().children().first().text(),'32');
+    assert.equal(grid.find('.formgrid-import-preview tbody tr').first().children().eq(1).text(),'Person 31');
+    grid.find('.formgrid-import-previous').trigger('click');
+    assert.equal(grid.find('.formgrid-import-preview tbody tr').first().children().eq(1).text(),'Person 1');
+    for (const size of [10,20,30,40,50,60,70,80,90,100]) {
+        grid.find('.formgrid-import-page-size').val(String(size)).trigger('change');
+        assert.equal(grid.find('.formgrid-import-preview tbody tr').length,size);
+        assert.match(grid.find('.formgrid-import-page-info').text(),new RegExp('Showing 1–'+size+' of 105'));
+    }
+    grid.find('.formgrid-import-next').trigger('click');
+    assert.equal(grid.find('.formgrid-import-preview tbody tr').length,5);
+    assert.equal(grid.find('.formgrid-import-preview tbody tr').first().children().first().text(),'102');
+    assert.equal(grid.find('.formgrid-import-next').prop('disabled'),true);
+    await chooseFile(other,csv);
+    assert.equal(other.find('.formgrid-import-preview tbody tr').length,20);
+    assert.equal(grid.find('.formgrid-import-preview tbody tr').length,5);
+    grid.find('.formgrid-import-confirm').trigger('click');
+    assert.equal(dataRows(grid).length,105);
+    assert.equal(values(grid)[104].name,'Person 105');
+    assert.equal(grid.find('.formgrid-import-pagination').prop('hidden'),true);
+    assert.equal(dataRows(other).length,0);
+});
+
+test('preview validates hidden pages and resets to page one for a new file', async t => {
+    const {grid,dom} = setup({}, {gridA:'invalid'});
+    t.after(()=>dom.window.close());
+    grid.children('#validateMaxRow').val('200');
+    const names = Array.from({length:25},(_,i)=>'Person '+(i+1));
+    await chooseFile(grid,'name\n'+[...names,'Person 1'].join('\n'));
+    assert.match(grid.find('.formgrid-import-status').text(),/Row 27: duplicate/);
+    assert.equal(grid.find('.formgrid-import-pagination').prop('hidden'),true);
+    assert.equal(grid.find('.formgrid-import-confirm').prop('disabled'),true);
+    await chooseFile(grid,'name\n'+names.join('\n'));
+    assert.equal(grid.find('.formgrid-import-page-size').val(),'10');
+    grid.find('.formgrid-import-next').trigger('click');
+    assert.match(grid.find('.formgrid-import-page-info').text(),/Page 2 of 3/);
+    await chooseFile(grid,'name\nNew Person');
+    assert.match(grid.find('.formgrid-import-page-info').text(),/Showing 1–1 of 1 rows. Page 1 of 1/);
+    assert.equal(grid.find('.formgrid-import-previous').prop('disabled'),true);
+    assert.equal(grid.find('.formgrid-import-next').prop('disabled'),true);
+    grid.find('.formgrid-import-cancel').trigger('click');
+    assert.equal(grid.find('.formgrid-import-pagination').prop('hidden'),true);
 });

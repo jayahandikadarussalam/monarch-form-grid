@@ -4,13 +4,13 @@
 
 <div class="form-cell full_width_field" ${elementMetaData!}>
     <#if !(request.getAttribute("com.monarch.shadow.lib.FormGridCustom")??) >
-        <link rel="stylesheet" type="text/css" href="${request.contextPath}/plugin/com.monarch.shadow.lib.FormGridCustom/css/formGridStyle.css?v=${pluginVersion!'2.1.2'}" />
-        <script type="text/javascript" src="${request.contextPath}/plugin/com.monarch.shadow.lib.FormGridCustom/js/jquery.formGridCustom.js?v=${pluginVersion!'2.1.2'}"></script>
-        <script type="text/javascript" src="${request.contextPath}/plugin/com.monarch.shadow.lib.FormGridCustom/js/jquery.gridPagingCustom.js?v=${pluginVersion!'2.1.2'}"></script>
-        <script type="text/javascript" src="${request.contextPath}/plugin/com.monarch.shadow.lib.FormGridCustom/js/jquery.formGridCustom.remake.js?v=${pluginVersion!'2.1.2'}"></script>
-        <script type="text/javascript" src="${request.contextPath}/plugin/com.monarch.shadow.lib.FormGridCustom/js/jquery.utils.js?v=${pluginVersion!'2.1.2'}"></script>
-        <script type="text/javascript" src="${request.contextPath}/plugin/com.monarch.shadow.lib.FormGridCustom/js/formGridImport.js?v=${pluginVersion!'2.1.2'}"></script>
-        <script type="text/javascript" src="${request.contextPath}/plugin/com.monarch.shadow.lib.FormGridCustom/js/jquery.formGridImport.js?v=${pluginVersion!'2.1.2'}"></script>
+        <link rel="stylesheet" type="text/css" href="${request.contextPath}/plugin/com.monarch.shadow.lib.FormGridCustom/css/formGridStyle.css?v=${pluginVersion!'2.2.0'}" />
+        <script type="text/javascript" src="${request.contextPath}/plugin/com.monarch.shadow.lib.FormGridCustom/js/jquery.formGridCustom.js?v=${pluginVersion!'2.2.0'}"></script>
+        <script type="text/javascript" src="${request.contextPath}/plugin/com.monarch.shadow.lib.FormGridCustom/js/jquery.gridPagingCustom.js?v=${pluginVersion!'2.2.0'}"></script>
+        <script type="text/javascript" src="${request.contextPath}/plugin/com.monarch.shadow.lib.FormGridCustom/js/jquery.formGridCustom.remake.js?v=${pluginVersion!'2.2.0'}"></script>
+        <script type="text/javascript" src="${request.contextPath}/plugin/com.monarch.shadow.lib.FormGridCustom/js/jquery.utils.js?v=${pluginVersion!'2.2.0'}"></script>
+        <script type="text/javascript" src="${request.contextPath}/plugin/com.monarch.shadow.lib.FormGridCustom/js/formGridImport.js?v=${pluginVersion!'2.2.0'}"></script>
+        <script type="text/javascript" src="${request.contextPath}/plugin/com.monarch.shadow.lib.FormGridCustom/js/jquery.formGridImport.js?v=${pluginVersion!'2.2.0'}"></script>
     </#if>
     <script type="text/javascript">
         $(document).ready(function() {
@@ -35,7 +35,8 @@
                 grid.formGridImport({
                     columns: JSON.parse(grid.children('.formgrid-import-columns').val()),
                     sortField: '<#if element.properties.enableSorting! == "true">${element.properties.sortField!?js_string}</#if>',
-                    libraryUrl: '${request.contextPath}/plugin/com.monarch.shadow.lib.FormGridCustom/js/vendor/xlsx.full.min.js?v=${pluginVersion!"2.1.2"}'
+                    previewPageSize: '${(element.properties.importPreviewPageSize!"10")?js_string}',
+                    libraryUrl: '${request.contextPath}/plugin/com.monarch.shadow.lib.FormGridCustom/js/vendor/xlsx.full.min.js?v=${pluginVersion!"2.2.0"}'
                 });
             </#if>
         });
@@ -153,7 +154,7 @@
                         <h4 id="${elementParamName!}_${element.properties.elementUniqueKey!}_import_title">${(importText.settings!'Import Data')?html}</h4>
                         <p>${(importText.intro!'Choose a file, then review the rows before importing.')?html}</p>
                     </div>
-                    <button type="button" class="btn btn-secondary formgrid-import-template"><i class="fas fa-download" aria-hidden="true"></i> ${(importText.template!'Download CSV Template')?html}</button>
+                    <button type="button" class="btn btn-secondary formgrid-import-template"><i class="fas fa-download" aria-hidden="true"></i> ${(importText.template!'Download Excel Template')?html}</button>
                 </div>
                 <div class="formgrid-import-fields">
                     <label class="formgrid-import-file-label">
@@ -172,6 +173,21 @@
                 </details>
                 <p class="formgrid-import-status" role="status" aria-live="polite"></p>
                 <div class="formgrid-import-preview"></div>
+                <div class="formgrid-import-pagination" role="group" aria-label="${(importText.pagination!'Import preview pagination')?html}" hidden>
+                    <label class="formgrid-import-page-size-label">
+                        <span>${(importText.rowsPerPage!'Rows per page')?html}</span>
+                        <select class="formgrid-import-page-size">
+                            <#list [10,20,30,40,50,60,70,80,90,100] as pageSize>
+                                <option value="${pageSize?c}">${pageSize?c}</option>
+                            </#list>
+                        </select>
+                    </label>
+                    <span class="formgrid-import-page-info" role="status" aria-live="polite"></span>
+                    <div class="formgrid-import-page-actions">
+                        <button type="button" class="btn btn-secondary formgrid-import-previous" disabled>${(importText.previous!'Previous')?html}</button>
+                        <button type="button" class="btn btn-secondary formgrid-import-next" disabled>${(importText.next!'Next')?html}</button>
+                    </div>
+                </div>
                 <div class="formgrid-import-footer">
                     <button type="button" class="btn btn-secondary formgrid-import-cancel">${(importText.cancel!'Cancel')?html}</button>
                     <button type="button" class="btn btn-primary formgrid-import-confirm" disabled><i class="fas fa-file-import" aria-hidden="true"></i> ${(importText.confirm!'Import Rows')?html}</button>

@@ -21,6 +21,10 @@ public class FormGridImportTemplateTest {
     }
 
     private String render(boolean enabled, boolean readonly) throws Exception {
+        return render(enabled, readonly, null);
+    }
+
+    private String render(boolean enabled, boolean readonly, String previewPageSize) throws Exception {
         Configuration config = new Configuration();
         config.setTemplateExceptionHandler(TemplateExceptionHandler.RETHROW_HANDLER);
         Template template = new Template("FormGridCustom.ftl", new InputStreamReader(
@@ -31,6 +35,7 @@ public class FormGridImportTemplateTest {
         props.put("readonly", readonly ? "true" : "");
         props.put("enableSorting", "true");
         props.put("sortField", "sort");
+        if (previewPageSize != null) props.put("importPreviewPageSize", previewPageSize);
         Map<String, Object> model = new HashMap<>();
         model.put("element", Collections.singletonMap("properties", props));
         model.put("request", new Request());
@@ -57,13 +62,22 @@ public class FormGridImportTemplateTest {
         assertTrue(html.contains("Name &amp; &lt;Label&gt;"));
         assertTrue(html.contains("accept=\".xlsx,.xls,.csv\""));
         assertTrue(html.contains("formgrid-import-confirm\" disabled"));
-        assertTrue(html.contains("vendor/xlsx.full.min.js?v=2.1.2"));
-        assertTrue(html.contains("Download CSV Template"));
+        assertTrue(html.contains("vendor/xlsx.full.min.js?v=2.2.0"));
+        assertTrue(html.contains("Download Excel Template"));
+        assertTrue(html.contains("previewPageSize: '10'"));
+        assertTrue(html.contains("class=\"formgrid-import-pagination\""));
+        assertTrue(html.contains("value=\"100\""));
         assertTrue(html.contains("Excel / CSV file"));
         assertTrue(html.contains("Import Rows"));
         assertFalse(html.contains("@@form.formgrid.import."));
         assertTrue(html.contains("aria-expanded=\"false\""));
         assertTrue(html.contains("formgrid-import-footer"));
+    }
+
+    @Test
+    public void configuredPreviewPageSizeIsPassedToImporter() throws Exception {
+        String html = render(true, false, "50");
+        assertTrue(html.contains("previewPageSize: '50'"));
     }
 
     @Test

@@ -58,6 +58,11 @@
             var fileInput = panel.find(".formgrid-import-file"), sheetSelect = panel.find(".formgrid-import-sheet");
             var status = panel.find(".formgrid-import-status"), preview = panel.find(".formgrid-import-preview");
             var confirm = panel.find(".formgrid-import-confirm"), workbook, library, batch, generation = 0;
+            var pagination = panel.find(".formgrid-import-pagination"), sizeSelect = panel.find(".formgrid-import-page-size");
+            var previous = panel.find(".formgrid-import-previous"), next = panel.find(".formgrid-import-next");
+            var previewPage = 1, previewPageSize = Number(options.previewPageSize);
+            if ([10,20,30,40,50,60,70,80,90,100].indexOf(previewPageSize) === -1) previewPageSize = 10;
+            sizeSelect.val(String(previewPageSize));
 
             function report(message, error) {
                 status.text(message).toggleClass("form-error-message", !!error).attr("role", error ? "alert" : "status");
@@ -70,32 +75,68 @@
                 sheetSelect.empty();
                 panel.find(".formgrid-import-sheet-label").prop("hidden", true);
                 preview.empty();
+                pagination.prop("hidden", true);
+                previewPage = 1;
                 confirm.prop("disabled", true);
                 report("");
             }
+            function renderPreviewPage() {
+                if (!batch) return;
+                preview.empty();
+                var pageCount = Math.ceil(batch.rows.length / previewPageSize);
+                previewPage = Math.max(1, Math.min(previewPage, pageCount));
+                var start = (previewPage - 1) * previewPageSize;
+                var end = Math.min(start + previewPageSize, batch.rows.length);
+                var table = $("<table class='formgrid-import-preview-table'></table>");
+                var header = $("<tr></tr>").append($("<th scope='col'></th>").text("Row"));
+                batch.columns.forEach(function(c) { header.append($("<th scope='col'></th>").text(c.label ? c.label + " (" + c.id + ")" : c.id)); });
+                table.append($("<thead></thead>").append(header));
+                var body = $("<tbody></tbody>");
+                batch.rows.slice(start, end).forEach(function(row, index) {
+                    var tr = $("<tr></tr>").append($("<td></td>").text(batch.rowNumbers[start + index]));
+                    batch.columns.forEach(function(c) { tr.append($("<td></td>").text(row[c.id])); });
+                    body.append(tr);
+                });
+                preview.append(table.append(body));
+                pagination.prop("hidden", false);
+                panel.find(".formgrid-import-page-info").text("Showing " + (start + 1) + "–" + end + " of " + batch.rows.length + " rows. Page " + previewPage + " of " + pageCount + ".");
+                previous.prop("disabled", previewPage === 1);
+                next.prop("disabled", previewPage === pageCount);
+                preview.scrollTop(0);
+            }
             function showPreview() {
                 batch = null;
+                previewPage = 1;
                 confirm.prop("disabled", true);
                 preview.empty();
+                pagination.prop("hidden", true);
                 try {
                     batch = rules.parseSheet(library, workbook, sheetSelect.val(), options.columns, options.sortField);
                     validate(grid, batch);
-                    var table = $("<table class='formgrid-import-preview-table'></table>");
-                    var header = $("<tr></tr>").append($("<th scope='col'></th>").text("Row"));
-                    batch.columns.forEach(function(c) { header.append($("<th scope='col'></th>").text(c.label ? c.label + " (" + c.id + ")" : c.id)); });
-                    table.append($("<thead></thead>").append(header));
-                    var body = $("<tbody></tbody>");
-                    batch.rows.slice(0, 10).forEach(function(row, index) {
-                        var tr = $("<tr></tr>").append($("<td></td>").text(batch.rowNumbers[index]));
-                        batch.columns.forEach(function(c) { tr.append($("<td></td>").text(row[c.id])); });
-                        body.append(tr);
-                    });
-                    preview.append(table.append(body));
-                    report(batch.rows.length + " rows ready to append. Preview shows the first " + Math.min(10, batch.rows.length) + " rows."
+                    renderPreviewPage();
+                    report(batch.rows.length + " rows ready to append."
                         + (batch.ignored.length ? " Ignored system columns: " + batch.ignored.join(", ") + "." : ""));
                     confirm.prop("disabled", false);
                 } catch (error) { batch = null; report(error.message, true); }
             }
+            sizeSelect.on("change.shadowImport", function(event) {
+                event.stopPropagation();
+                var size = Number($(this).val());
+                if ([10,20,30,40,50,60,70,80,90,100].indexOf(size) === -1) return;
+                previewPageSize = size;
+                previewPage = 1;
+                renderPreviewPage();
+            });
+            previous.on("click.shadowImport", function(event) {
+                event.preventDefault();
+                event.stopPropagation();
+                if (!this.disabled) { previewPage--; renderPreviewPage(); }
+            });
+            next.on("click.shadowImport", function(event) {
+                event.preventDefault();
+                event.stopPropagation();
+                if (!this.disabled) { previewPage++; renderPreviewPage(); }
+            });
             grid.children(".formgrid-import-open").on("click.shadowImport", function() {
                 panel.prop("hidden", false);
                 $(this).attr("aria-expanded", "true");
@@ -112,6 +153,8 @@
                 batch = null;
                 workbook = null;
                 preview.empty();
+                previewPage = 1;
+                pagination.prop("hidden", true);
                 sheetSelect.empty();
                 panel.find(".formgrid-import-sheet-label").prop("hidden", true);
                 confirm.prop("disabled", true);
@@ -142,12 +185,16 @@
             panel.find(".formgrid-import-template").on("click.shadowImport", function(event) {
                 event.preventDefault();
                 event.stopPropagation();
-                try {
-                    var csv = rules.templateCsv(options.columns, options.sortField);
-                    var url = window.URL.createObjectURL(new Blob([csv], {type: "text/csv;charset=utf-8"}));
+                var button = $(this);
+                if (button.prop("disabled")) return;
+                button.prop("disabled", true);
+                Promise.resolve().then(function() { return parser(options.libraryUrl); }).then(function(xlsx) {
+                    var template = rules.templateWorkbook(xlsx, options.columns, options.sortField);
+                    var bytes = xlsx.write(template, {type: "array", bookType: "xlsx"});
+                    var url = window.URL.createObjectURL(new Blob([bytes], {type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"}));
                     var link = window.document.createElement("a");
                     link.href = url;
-                    link.download = "form-grid-template.csv";
+                    link.download = "form-grid-template.xlsx";
                     link.hidden = true;
                     // Userview delegates link clicks to its router. Preserve the browser's
                     // download action, but do not let the blob URL reach that router.
@@ -161,7 +208,7 @@
                         link.remove();
                         window.setTimeout(function() { window.URL.revokeObjectURL(url); }, 1000);
                     }
-                } catch (error) { report(error.message, true); }
+                }).catch(function(error) { report(error.message, true); }).finally(function() { button.prop("disabled", false); });
             });
         });
     };

@@ -137,11 +137,15 @@
             seen.add(value);
         });
     }
-    function templateCsv(columns, sortField) {
+    function templateWorkbook(XLSX, columns, sortField) {
         var headers = columnsForImport(columns, sortField).filter(function(c) { return c.type !== "file" && c.type !== "image"; });
         if (!headers.length) throw new Error("Configure at least one importable column first.");
-        return "\uFEFF" + headers.map(function(c) { return '"' + c.id.replace(/"/g, '""') + '"'; }).join(",") + "\r\n";
+        var workbook = XLSX.utils.book_new();
+        var sheet = XLSX.utils.aoa_to_sheet([headers.map(function(c) { return c.id; })]);
+        sheet["!cols"] = headers.map(function(c) { return {wch: Math.max(20, Math.min(40, c.id.length + 4))}; });
+        XLSX.utils.book_append_sheet(workbook, sheet, "Import_Data");
+        return workbook;
     }
     return {MAX_ROWS: MAX_ROWS, MAX_BYTES: MAX_BYTES, checkFile: checkFile, readWorkbook: readWorkbook,
-        parseSheet: parseSheet, validateBatch: validateBatch, templateCsv: templateCsv, formatDate: formatDate};
+        parseSheet: parseSheet, validateBatch: validateBatch, templateWorkbook: templateWorkbook, formatDate: formatDate};
 });

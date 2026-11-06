@@ -119,7 +119,11 @@ test('file, row and column limits reject oversized imports', () => {
     assert.throws(() => parse(wb), /256 column/);
 });
 test('dynamic template excludes attachments and system-managed fields', () => {
-    const template = rules.templateCsv([...columns, {id:'id'}, {id:'sort'}], 'sort');
-    assert.equal(template, '\uFEFF"name","select","date"\r\n');
-    assert.equal(parse(csv(template + 'Andi,A,2026-11-05')).rows[0].name, 'Andi');
+    const template = rules.templateWorkbook(XLSX, [...columns, {id:'id'}, {id:'sort'}], 'sort');
+    const saved = XLSX.read(XLSX.write(template, {type:'buffer',bookType:'xlsx'}));
+    assert.deepEqual(saved.SheetNames, ['Import_Data']);
+    assert.deepEqual(XLSX.utils.sheet_to_json(saved.Sheets.Import_Data,{header:1}), [['name','select','date']]);
+    XLSX.utils.sheet_add_aoa(saved.Sheets.Import_Data, [['Andi','A','2026-11-05']], {origin:'A2'});
+    assert.equal(parse(saved).rows[0].name, 'Andi');
+    assert.throws(() => rules.templateWorkbook(XLSX, [{id:'file',type:'file'}], ''), /importable column/);
 });

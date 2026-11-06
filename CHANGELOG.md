@@ -1,5 +1,15 @@
 # Changelog
 
+## [2.2.0] - 2026-11-06
+
+### Ditambahkan
+- Properti Import Preview Page Size pada tab Import Data, dengan pilihan 10, 20, 30, 40, 50, 60, 70, 80, 90, dan 100 baris.
+- Navigasi Previous/Next, informasi halaman, dan pilihan Rows per page pada pratinjau import. Import Rows tetap memasukkan seluruh batch.
+
+### Diubah
+- Download template menggunakan workbook Excel `.xlsx` dengan header sesuai Field ID dan urutan Columns. Download tetap diisolasi dari navigasi userview.
+- Validasi dilakukan pada seluruh batch, termasuk baris yang tidak tampil di halaman pratinjau aktif.
+
 ## [2.1.2] - 2026-11-05
 
 ### Diperbaiki

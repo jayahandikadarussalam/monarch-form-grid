@@ -41,7 +41,7 @@ import java.util.*;
 
 public class FormGridCustom extends Element implements FormBuilderPaletteElement, FormContainer, GridInnerDataRetriever, PwaOfflineResources, PwaOfflineReadonly {
     private static final String MESSAGE_PATH = "messages/FormGridCustom";
-    private static final String VERSION = "2.1.2";
+    private static final String VERSION = "2.2.0";
 
     protected Map<FormData, FormRowSet> cachedRowSet = new HashMap<>();
     protected Map<String, FormData> formDatas = new HashMap<>();
@@ -159,7 +159,11 @@ public class FormGridCustom extends Element implements FormBuilderPaletteElement
             {"settings", "Import Data"},
             {"intro", "Choose a file, then review the rows before importing."},
             {"open", "Import Excel / CSV"},
-            {"template", "Download CSV Template"},
+            {"template", "Download Excel Template"},
+            {"rowsPerPage", "Rows per page"},
+            {"previous", "Previous"},
+            {"next", "Next"},
+            {"pagination", "Import preview pagination"},
             {"file", "Excel / CSV file"},
             {"formats", ".xlsx, .xls or .csv. Maximum 10 MB."},
             {"sheet", "Worksheet"},
