@@ -62,9 +62,9 @@ public class FormGridImportTemplateTest {
         assertTrue(html.contains("Name &amp; &lt;Label&gt;"));
         assertTrue(html.contains("accept=\".xlsx,.xls,.csv\""));
         assertTrue(html.contains("formgrid-import-confirm\" disabled"));
-        assertTrue(html.contains("vendor/xlsx.full.min.js?v=2.2.0"));
+        assertTrue(html.contains("vendor/xlsx.full.min.js?v=2.2.2"));
         assertTrue(html.contains("Download Excel Template"));
-        assertTrue(html.contains("previewPageSize: '10'"));
+        assertFalse(html.contains("previewPageSize:"));
         assertTrue(html.contains("class=\"formgrid-import-pagination\""));
         assertTrue(html.contains("value=\"100\""));
         assertTrue(html.contains("Excel / CSV file"));
@@ -75,9 +75,10 @@ public class FormGridImportTemplateTest {
     }
 
     @Test
-    public void configuredPreviewPageSizeIsPassedToImporter() throws Exception {
+    public void legacyPreviewPageSizeIsNotPassedToImporter() throws Exception {
         String html = render(true, false, "50");
-        assertTrue(html.contains("previewPageSize: '50'"));
+        assertFalse(html.contains("previewPageSize:"));
+        assertTrue(html.contains("class=\"formgrid-import-page-size\""));
     }
 
     @Test

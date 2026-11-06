@@ -60,8 +60,7 @@
             var confirm = panel.find(".formgrid-import-confirm"), workbook, library, batch, generation = 0;
             var pagination = panel.find(".formgrid-import-pagination"), sizeSelect = panel.find(".formgrid-import-page-size");
             var previous = panel.find(".formgrid-import-previous"), next = panel.find(".formgrid-import-next");
-            var previewPage = 1, previewPageSize = Number(options.previewPageSize);
-            if ([10,20,30,40,50,60,70,80,90,100].indexOf(previewPageSize) === -1) previewPageSize = 10;
+            var previewPage = 1, previewPageSize = 10;
             sizeSelect.val(String(previewPageSize));
 
             function report(message, error) {
@@ -88,12 +87,14 @@
                 var start = (previewPage - 1) * previewPageSize;
                 var end = Math.min(start + previewPageSize, batch.rows.length);
                 var table = $("<table class='formgrid-import-preview-table'></table>");
-                var header = $("<tr></tr>").append($("<th scope='col'></th>").text("Row"));
+                var header = $("<tr></tr>").append($("<th scope='col'></th>").text("No."));
                 batch.columns.forEach(function(c) { header.append($("<th scope='col'></th>").text(c.label ? c.label + " (" + c.id + ")" : c.id)); });
                 table.append($("<thead></thead>").append(header));
                 var body = $("<tbody></tbody>");
                 batch.rows.slice(start, end).forEach(function(row, index) {
-                    var tr = $("<tr></tr>").append($("<td></td>").text(batch.rowNumbers[start + index]));
+                    var tr = $("<tr></tr>").append($("<td></td>")
+                        .attr("title", "File row " + batch.rowNumbers[start + index])
+                        .text(start + index + 1));
                     batch.columns.forEach(function(c) { tr.append($("<td></td>").text(row[c.id])); });
                     body.append(tr);
                 });

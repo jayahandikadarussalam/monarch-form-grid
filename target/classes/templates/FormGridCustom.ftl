@@ -4,13 +4,13 @@
 
 <div class="form-cell full_width_field" ${elementMetaData!}>
     <#if !(request.getAttribute("com.monarch.shadow.lib.FormGridCustom")??) >
-        <link rel="stylesheet" type="text/css" href="${request.contextPath}/plugin/com.monarch.shadow.lib.FormGridCustom/css/formGridStyle.css?v=${pluginVersion!'2.2.0'}" />
-        <script type="text/javascript" src="${request.contextPath}/plugin/com.monarch.shadow.lib.FormGridCustom/js/jquery.formGridCustom.js?v=${pluginVersion!'2.2.0'}"></script>
-        <script type="text/javascript" src="${request.contextPath}/plugin/com.monarch.shadow.lib.FormGridCustom/js/jquery.gridPagingCustom.js?v=${pluginVersion!'2.2.0'}"></script>
-        <script type="text/javascript" src="${request.contextPath}/plugin/com.monarch.shadow.lib.FormGridCustom/js/jquery.formGridCustom.remake.js?v=${pluginVersion!'2.2.0'}"></script>
-        <script type="text/javascript" src="${request.contextPath}/plugin/com.monarch.shadow.lib.FormGridCustom/js/jquery.utils.js?v=${pluginVersion!'2.2.0'}"></script>
-        <script type="text/javascript" src="${request.contextPath}/plugin/com.monarch.shadow.lib.FormGridCustom/js/formGridImport.js?v=${pluginVersion!'2.2.0'}"></script>
-        <script type="text/javascript" src="${request.contextPath}/plugin/com.monarch.shadow.lib.FormGridCustom/js/jquery.formGridImport.js?v=${pluginVersion!'2.2.0'}"></script>
+        <link rel="stylesheet" type="text/css" href="${request.contextPath}/plugin/com.monarch.shadow.lib.FormGridCustom/css/formGridStyle.css?v=${pluginVersion!'2.2.2'}" />
+        <script type="text/javascript" src="${request.contextPath}/plugin/com.monarch.shadow.lib.FormGridCustom/js/jquery.formGridCustom.js?v=${pluginVersion!'2.2.2'}"></script>
+        <script type="text/javascript" src="${request.contextPath}/plugin/com.monarch.shadow.lib.FormGridCustom/js/jquery.gridPagingCustom.js?v=${pluginVersion!'2.2.2'}"></script>
+        <script type="text/javascript" src="${request.contextPath}/plugin/com.monarch.shadow.lib.FormGridCustom/js/jquery.formGridCustom.remake.js?v=${pluginVersion!'2.2.2'}"></script>
+        <script type="text/javascript" src="${request.contextPath}/plugin/com.monarch.shadow.lib.FormGridCustom/js/jquery.utils.js?v=${pluginVersion!'2.2.2'}"></script>
+        <script type="text/javascript" src="${request.contextPath}/plugin/com.monarch.shadow.lib.FormGridCustom/js/formGridImport.js?v=${pluginVersion!'2.2.2'}"></script>
+        <script type="text/javascript" src="${request.contextPath}/plugin/com.monarch.shadow.lib.FormGridCustom/js/jquery.formGridImport.js?v=${pluginVersion!'2.2.2'}"></script>
     </#if>
     <script type="text/javascript">
         $(document).ready(function() {
@@ -35,8 +35,7 @@
                 grid.formGridImport({
                     columns: JSON.parse(grid.children('.formgrid-import-columns').val()),
                     sortField: '<#if element.properties.enableSorting! == "true">${element.properties.sortField!?js_string}</#if>',
-                    previewPageSize: '${(element.properties.importPreviewPageSize!"10")?js_string}',
-                    libraryUrl: '${request.contextPath}/plugin/com.monarch.shadow.lib.FormGridCustom/js/vendor/xlsx.full.min.js?v=${pluginVersion!"2.2.0"}'
+                    libraryUrl: '${request.contextPath}/plugin/com.monarch.shadow.lib.FormGridCustom/js/vendor/xlsx.full.min.js?v=${pluginVersion!"2.2.2"}'
                 });
             </#if>
         });

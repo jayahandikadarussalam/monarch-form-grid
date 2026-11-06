@@ -39,7 +39,7 @@ function fixture(id = 'gridA', name = 'items') {
             <button type="button" class="formgrid-import-cancel">Cancel</button>
         </div></div>`;
 }
-function setup(columnsByGrid = {}, previewSizes = {}) {
+function setup(columnsByGrid = {}) {
     const dom = new JSDOM(`<form>${fixture()}${fixture('gridB','other')}</form>`, {runScripts:'outside-only', url:'https://example.test/jw'});
     const window = dom.window, $ = jquery(window);
     window.jQuery = window.$ = $;
@@ -57,7 +57,7 @@ function setup(columnsByGrid = {}, previewSizes = {}) {
     const grids = $('#gridA,#gridB');
     grids.formGridCustom({messages:{},options:{}}).gridPagingCustom({customSize:'1', dataSorting:true});
     grids.each(function() {
-        $(this).formGridImport({columns:columnsByGrid[this.id] || [{id:'name',type:'text',label:'Name'}, {id:'date',type:'date',label:'Date'}],sortField:'sort',previewPageSize:previewSizes[this.id],libraryUrl:'/parser.js'});
+        $(this).formGridImport({columns:columnsByGrid[this.id] || [{id:'name',type:'text',label:'Name'}, {id:'date',type:'date',label:'Date'}],sortField:'sort',libraryUrl:'/parser.js'});
     });
     return {window,$,dom,grid:$('#gridA'),other:$('#gridB'),previousParser};
 }
@@ -87,6 +87,8 @@ test('preview waits for confirmation, appends serializable rows, refreshes pagin
     await chooseFile(grid,'name,date\nAndi,2026-11-05\nBudi,2026-11-06');
     assert.equal(dataRows(grid).length,0);
     assert.equal(grid.find('.formgrid-import-preview tbody tr').length,2);
+    assert.equal(grid.find('.formgrid-import-preview tbody tr').first().children().first().text(),'1');
+    assert.equal(grid.find('.formgrid-import-preview tbody tr').first().children().first().attr('title'),'File row 2');
     assert.equal(grid.find('.formgrid-import-confirm').prop('disabled'),false);
     assert.equal(grid.children('.formgrid-import-open').attr('aria-expanded'),'true');
     assert.equal(window.XLSX,previousParser);
@@ -207,20 +209,20 @@ test('template download preserves each grid column order without entering uservi
     assert.equal(dataRows(other).length,0);
 });
 
-test('preview pages follow developer settings, allow 10-100 rows and import the whole batch', async t => {
-    const {grid,other,dom} = setup({}, {gridA:'30',gridB:'20'});
+test('preview defaults to 10, allows 10-100 rows and imports the whole batch', async t => {
+    const {grid,other,dom} = setup();
     t.after(()=>dom.window.close());
     grid.children('#validateMaxRow').val('200');
     other.children('#validateMaxRow').val('200');
     const csv = 'name\n' + Array.from({length:105},(_,i)=>'Person '+(i+1)).join('\n');
     await chooseFile(grid,csv);
-    assert.equal(grid.find('.formgrid-import-preview tbody tr').length,30);
-    assert.equal(grid.find('.formgrid-import-page-size').val(),'30');
+    assert.equal(grid.find('.formgrid-import-preview tbody tr').length,10);
+    assert.equal(grid.find('.formgrid-import-page-size').val(),'10');
     assert.equal(grid.find('.formgrid-import-pagination').prop('hidden'),false);
     assert.equal(grid.find('.formgrid-import-previous').prop('disabled'),true);
     grid.find('.formgrid-import-next').trigger('click');
-    assert.equal(grid.find('.formgrid-import-preview tbody tr').first().children().first().text(),'32');
-    assert.equal(grid.find('.formgrid-import-preview tbody tr').first().children().eq(1).text(),'Person 31');
+    assert.equal(grid.find('.formgrid-import-preview tbody tr').first().children().first().text(),'11');
+    assert.equal(grid.find('.formgrid-import-preview tbody tr').first().children().eq(1).text(),'Person 11');
     grid.find('.formgrid-import-previous').trigger('click');
     assert.equal(grid.find('.formgrid-import-preview tbody tr').first().children().eq(1).text(),'Person 1');
     for (const size of [10,20,30,40,50,60,70,80,90,100]) {
@@ -230,9 +232,11 @@ test('preview pages follow developer settings, allow 10-100 rows and import the 
     }
     grid.find('.formgrid-import-next').trigger('click');
     assert.equal(grid.find('.formgrid-import-preview tbody tr').length,5);
-    assert.equal(grid.find('.formgrid-import-preview tbody tr').first().children().first().text(),'102');
+    assert.equal(grid.find('.formgrid-import-preview tbody tr').first().children().first().text(),'101');
     assert.equal(grid.find('.formgrid-import-next').prop('disabled'),true);
     await chooseFile(other,csv);
+    assert.equal(other.find('.formgrid-import-page-size').val(),'10');
+    other.find('.formgrid-import-page-size').val('20').trigger('change');
     assert.equal(other.find('.formgrid-import-preview tbody tr').length,20);
     assert.equal(grid.find('.formgrid-import-preview tbody tr').length,5);
     grid.find('.formgrid-import-confirm').trigger('click');
@@ -243,7 +247,7 @@ test('preview pages follow developer settings, allow 10-100 rows and import the 
 });
 
 test('preview validates hidden pages and resets to page one for a new file', async t => {
-    const {grid,dom} = setup({}, {gridA:'invalid'});
+    const {grid,dom} = setup();
     t.after(()=>dom.window.close());
     grid.children('#validateMaxRow').val('200');
     const names = Array.from({length:25},(_,i)=>'Person '+(i+1));

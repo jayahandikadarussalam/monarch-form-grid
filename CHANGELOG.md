@@ -1,5 +1,15 @@
 # Changelog
 
+## [2.2.2] - 2026-11-06
+
+### Diperbaiki
+- Kolom No. pada preview import menampilkan nomor urut data mulai 1 dan berlanjut antarhalaman. Nomor baris asli file tersedia pada tooltip dan tetap digunakan dalam pesan validasi.
+
+## [2.2.1] - 2026-11-06
+
+### Diubah
+- Properti Import Preview Page Size dihapus dari pengaturan developer. Preview dimulai dengan 10 baris; pengguna mengaturnya langsung melalui Rows per page (10–100) dan navigasi Previous/Next.
+
 ## [2.2.0] - 2026-11-06
 
 ### Ditambahkan
