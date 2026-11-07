@@ -210,7 +210,8 @@
                                         "sortWithButtons": "true",
                                         "enableDuplicate": "true",
                                         "sortField": "sort",
-                                        "formDefId": "areass"
+                                        "formDefId": "areass",
+                                        "disabledDuplicate": "false"
                                     }
                                 ],
                                 "deleteFiles": "",
@@ -227,7 +228,18 @@
                                 "submit-label-readonly": "",
                                 "width": "900",
                                 "checkboxDisable": "",
-                                "readonlyLabel": ""
+                                "readonlyLabel": "",
+                                "nestedColumns": [
+                                    {
+                                        "gridId": "areasGrid",
+                                        "value": "name",
+                                        "label": "Name",
+                                        "formatType": "text",
+                                        "format": "",
+                                        "width": "",
+                                        "visibility": "yes"
+                                    }
+                                ]
                             }
                         },
                         {

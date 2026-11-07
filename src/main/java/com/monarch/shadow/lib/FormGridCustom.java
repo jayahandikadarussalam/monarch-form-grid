@@ -41,7 +41,7 @@ import java.util.*;
 
 public class FormGridCustom extends Element implements FormBuilderPaletteElement, FormContainer, GridInnerDataRetriever, PwaOfflineResources, PwaOfflineReadonly {
     private static final String MESSAGE_PATH = "messages/FormGridCustom";
-    private static final String VERSION = "2.9.0";
+    private static final String VERSION = "2.11.0";
 
     protected Map<FormData, FormRowSet> cachedRowSet = new HashMap<>();
     protected Map<String, FormData> formDatas = new HashMap<>();
@@ -518,7 +518,9 @@ public class FormGridCustom extends Element implements FormBuilderPaletteElement
 
         if (this.headerMap == null) {
             this.headerMap = new LinkedHashMap<>();
-            Object optionProperty = getProperty("options");
+            Object optionProperty = getEffectiveColumns();
+
+            if (optionProperty instanceof Object[]) optionProperty = Arrays.asList((Object[]) optionProperty);
 
             if (optionProperty instanceof Collection) {
                 for (Object opt : (Collection<?>) optionProperty) {
@@ -669,26 +671,76 @@ public class FormGridCustom extends Element implements FormBuilderPaletteElement
 
     protected String getNestedRelationsJson() {
         JSONArray result = new JSONArray();
+        List<Map<String, String>> columns = getNestedColumns();
         Object configured = getProperty("nestedChildren");
         if (configured instanceof Object[]) {
             for (Object item : (Object[]) configured) {
                 if (!(item instanceof Map)) continue;
                 Map<?, ?> values = (Map<?, ?>) item;
                 JSONObject relation = new JSONObject();
-                for (String key : Arrays.asList("gridId", "formDefId", "label", "parentGridId", "parentKey", "foreignKey", "sortWithButtons", "sortField", "enableDuplicate")) {
+                for (String key : Arrays.asList("gridId", "formDefId", "label", "parentGridId", "parentKey", "foreignKey", "sortWithButtons", "sortField", "enableDuplicate", "disabledDuplicate")) {
                     Object value = values.get(key);
                     String setting = value == null ? "" : value.toString().trim();
                     if (setting.isEmpty()) {
                         if ("sortWithButtons".equals(key)) setting = "false";
                         else if ("enableDuplicate".equals(key)) setting = "false";
+                        else if ("disabledDuplicate".equals(key)) setting = "false";
                         else if ("sortField".equals(key)) setting = "sort";
                     }
                     relation.put(key, setting);
                 }
+                JSONArray childColumns = new JSONArray();
+                for (Map<String, String> column : columns) {
+                    if (!relation.getString("gridId").equals(column.get("gridId"))) continue;
+                    JSONObject childColumn = new JSONObject(column);
+                    childColumn.remove("gridId");
+                    childColumns.put(childColumn);
+                }
+                if (childColumns.length() > 0) relation.put("columns", childColumns);
                 result.put(relation);
             }
         }
         return result.toString();
+    }
+
+    protected List<Map<String, String>> getNestedColumns() {
+        List<Map<String, String>> result = new ArrayList<>();
+        Object configured = getProperty("nestedColumns");
+        Collection<?> rows = configured instanceof Object[] ? Arrays.asList((Object[]) configured) :
+                configured instanceof Collection ? (Collection<?>) configured : Collections.emptyList();
+        for (Object item : rows) {
+            if (!(item instanceof Map)) continue;
+            Map<?, ?> raw = (Map<?, ?>) item;
+            Map<String, String> column = new LinkedHashMap<>();
+            for (String key : Arrays.asList("gridId", "value", "label", "formatType", "format", "width", "visibility")) {
+                Object value = raw.get(key);
+                // Preserve intentional spacing in labels and format patterns, as in the native Columns grid.
+                String setting = value == null ? "" : value.toString();
+                if (!"label".equals(key) && !"format".equals(key)) setting = setting.trim();
+                if ("formatType".equals(key) && setting.isEmpty()) setting = "text";
+                if ("visibility".equals(key) && setting.isEmpty()) setting = "yes";
+                column.put(key, setting);
+            }
+            result.add(column);
+        }
+        return result;
+    }
+
+    protected Object getEffectiveColumns() {
+        JSONObject relation = getNestedRelation();
+        if (relation != null && relation.has("columns")) {
+            JSONArray columns = relation.getJSONArray("columns");
+            List<Map<String, Object>> result = new ArrayList<>();
+            for (int i = 0; i < columns.length(); i++) {
+                JSONObject column = columns.getJSONObject(i);
+                Map<String, Object> values = new LinkedHashMap<>();
+                for (String key : Arrays.asList("value", "label", "formatType", "format", "width", "visibility"))
+                    values.put(key, column.getString(key));
+                result.add(values);
+            }
+            if (!result.isEmpty()) return result;
+        }
+        return getProperty("options");
     }
 
     protected JSONObject getNestedRelation() {
@@ -793,7 +845,7 @@ public class FormGridCustom extends Element implements FormBuilderPaletteElement
                     throw new IllegalArgumentException(childId + ": Child Form ID not found in the current app: " + childFormId);
                 if ("true".equals(child.getPropertyString("enableNested")))
                     throw new IllegalArgumentException("Configure nesting only on the root grid: " + childId);
-                for (String setting : Arrays.asList("sortWithButtons", "enableDuplicate")) {
+                for (String setting : Arrays.asList("sortWithButtons", "enableDuplicate", "disabledDuplicate")) {
                     if (!Arrays.asList("true", "false").contains(relation.getString(setting)))
                         throw new IllegalArgumentException("Invalid " + setting + " for child grid: " + childId);
                 }
@@ -804,6 +856,22 @@ public class FormGridCustom extends Element implements FormBuilderPaletteElement
                     throw new IllegalArgumentException(childId + ": Nested Sort Field must identify a field in its child Form: " + relation.getString("sortField"));
                 configs.put(childId, relation);
                 grids.put(childId, child);
+            }
+            Map<String, Set<String>> columnFields = new HashMap<>();
+            for (Map<String, String> column : getNestedColumns()) {
+                String childId = column.get("gridId"), field = column.get("value");
+                if (!configs.containsKey(childId))
+                    throw new IllegalArgumentException("Nested Columns: Child Grid ID is not configured: " + childId);
+                if (!field.matches("[a-zA-Z0-9_]+") ||
+                        (!Arrays.asList("id", "dateCreated", "dateModified", "createdBy", "createdByName", "modifiedBy", "modifiedByName").contains(field)
+                        && !grids.get(childId).hasNestedField(field, data)))
+                    throw new IllegalArgumentException(childId + ": Nested Columns Field ID not found in its Form: " + field);
+                if (!columnFields.computeIfAbsent(childId, key -> new HashSet<>()).add(field))
+                    throw new IllegalArgumentException(childId + ": Duplicate Nested Columns Field ID: " + field);
+                if (!Arrays.asList("text", "html", "nl2br", "decimal", "currency", "date", "file", "image", "options").contains(column.get("formatType")))
+                    throw new IllegalArgumentException(childId + ": Invalid Nested Columns Format Type: " + column.get("formatType"));
+                if (!Arrays.asList("yes", "no").contains(column.get("visibility")))
+                    throw new IllegalArgumentException(childId + ": Invalid Nested Columns Visibility: " + column.get("visibility"));
             }
             for (String childId : configs.keySet()) {
                 Set<String> visited = new HashSet<>();

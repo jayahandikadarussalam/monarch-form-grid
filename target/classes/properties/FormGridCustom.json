@@ -117,7 +117,7 @@
       {
         "name": "nestedChildren",
         "label": "Child Tables / Subgrids",
-        "description": "Child Grid ID identifies a Shadow Form Grid element in this containing form (for example areasGrid). Child Form ID selects the actual child Form (for example areass / Area), which supplies its table and popup. The referenced grid still supplies Columns and binders; binder formDefId follows this selection when supported. Configure nested actions independently. Leave Parent Grid ID empty for a direct child. Use Form Field IDs without c_.",
+        "description": "Child Grid ID identifies a Shadow Form Grid element in this containing form (for example areasGrid). Child Form ID selects the actual child Form (for example areass / Area), which supplies its table and popup. Configure display columns in Nested Columns below. The referenced grid supplies fallback Columns and binders; binder formDefId follows this selection when supported. Configure nested actions independently. Leave Parent Grid ID empty for a direct child. Use Form Field IDs without c_.",
         "type": "grid",
         "control_field": "enableNested",
         "control_value": "true",
@@ -138,14 +138,110 @@
           {"key": "sortField", "label": "Sort Field", "value": "sort", "type": "autocomplete", "options": []},
           {
             "key": "enableDuplicate", "label": "Duplicate", "type": "selectbox", "value": "false",
-            "options": [{"value": "false", "label": "Default"}, {"value": "true", "label": "Pop Up Dialog"}]
+            "options": [{"value": "false", "label": "Default"}, {"value": "true", "label": "Popup Dialog"}]
+          },
+          {
+            "key": "disabledDuplicate", "label": "Disable Duplicate", "type": "truefalse",
+            "true_value": "true", "false_value": "false", "value": "false"
+          }
+        ]
+      },
+      {
+        "name": "nestedColumns",
+        "label": "Nested Columns",
+        "description": "Choose a Child Grid ID from Child Tables / Subgrids, then configure its columns in display order. Field suggestions follow that child's selected Form. These columns override the child grid's Columns; leave a child without entries to use its existing Columns.",
+        "type": "grid",
+        "control_field": "enableNested",
+        "control_value": "true",
+        "columns": [
+          {
+            "key": "gridId",
+            "label": "Child Grid ID",
+            "type": "selectbox",
+            "options": [],
+            "required": "True"
+          },
+          {
+            "key": "value",
+            "label": "@@form.formgrid.fieldId@@",
+            "type": "autocomplete",
+            "required": "True",
+            "options": []
+          },
+          {
+            "key": "label",
+            "label": "@@form.formgrid.label@@"
+          },
+          {
+            "key": "formatType",
+            "label": "@@form.formgrid.formatType@@",
+            "options": [
+              {
+                "value": "text",
+                "label": "@@form.formgrid.formatType.text@@"
+              },
+              {
+                "value": "html",
+                "label": "@@form.formgrid.formatType.html@@"
+              },
+              {
+                "value": "nl2br",
+                "label": "@@form.formgrid.formatType.nl2br@@"
+              },
+              {
+                "value": "decimal",
+                "label": "@@form.formgrid.formatType.decimal@@"
+              },
+              {
+                "value": "currency",
+                "label": "@@form.formgrid.formatType.currency@@"
+              },
+              {
+                "value": "date",
+                "label": "@@form.formgrid.formatType.date@@"
+              },
+              {
+                "value": "file",
+                "label": "@@form.formgrid.formatType.file@@"
+              },
+              {
+                "value": "image",
+                "label": "@@form.formgrid.formatType.image@@"
+              },
+              {
+                "value": "options",
+                "label": "@@form.formgrid.formatType.options@@"
+              }
+            ]
+          },
+          {
+            "key": "format",
+            "label": "@@form.formgrid.format@@"
+          },
+          {
+            "key": "width",
+            "label": "@@form.formgrid.width@@"
+          },
+          {
+            "key": "visibility",
+            "label": "@@form.formgrid.visibility@@",
+            "options": [
+              {
+                "value": "yes",
+                "label": "@@form.formgrid.visibility.yes@@"
+              },
+              {
+                "value": "no",
+                "label": "@@form.formgrid.visibility.no@@"
+              }
+            ]
           }
         ]
       },
       {
         "name": "nestedPropertiesLayout",
         "type": "custom",
-        "script_url": "[CONTEXT_PATH]/plugin/com.monarch.shadow.lib.FormGridCustom/js/formGridNestedProperties.js?v=2.9.0",
+        "script_url": "[CONTEXT_PATH]/plugin/com.monarch.shadow.lib.FormGridCustom/js/formGridNestedProperties.js?v=2.11.0",
         "field_options_url": "[CONTEXT_PATH]/web/json/console/app[APP_PATH]/form/columns/options"
       }
     ]
@@ -250,12 +346,19 @@
       {
         "name": "showPopupDuplicate",
         "label": "@@form.listgrid.showPopupDuplicate@@",
-        "type": "checkbox",
+        "type": "selectbox",
         "value": "false",
+        "control_field": "disabledDuplicate",
+        "control_value": "^(?!true$).*$",
+        "control_use_regex": "true",
         "options": [
           {
+            "value": "false",
+            "label": "Default"
+          },
+          {
             "value": "true",
-            "label": ""
+            "label": "Popup Dialog"
           }
         ]
       },

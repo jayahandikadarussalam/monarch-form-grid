@@ -117,6 +117,10 @@ public class FormGridNestedTest {
         config.put("enableDuplicate", "invalid"); assertFalse(root.validateNestedRows(new FormData()));
         config.put("enableDuplicate", "false"); config.put("sortWithButtons", "false");
         child.setProperty("enableSorting", ""); assertTrue(root.validateNestedRows(new FormData()));
+        config.put("disabledDuplicate", "true");
+        assertTrue(root.validateNestedRows(new FormData()));
+        assertEquals("true", new JSONArray(root.getNestedRelationsJson()).getJSONObject(0).getString("disabledDuplicate"));
+        config.put("disabledDuplicate", "invalid"); assertFalse(root.validateNestedRows(new FormData()));
     }
 
     @Test public void missingActionSettingsUseFixedDefaultsWithoutInheritingChildFlags() {
@@ -125,6 +129,7 @@ public class FormGridNestedTest {
         for (int i = 0; i < schema.length(); i++) {
             assertEquals("false", schema.getJSONObject(i).getString("sortWithButtons"));
             assertEquals("false", schema.getJSONObject(i).getString("enableDuplicate"));
+            assertEquals("false", schema.getJSONObject(i).getString("disabledDuplicate"));
             assertEquals("sort", schema.getJSONObject(i).getString("sortField"));
         }
     }
@@ -222,4 +227,87 @@ public class FormGridNestedTest {
         standalone.setLoadBinder(custom); standalone.getLoadBinder();
         assertFalse(custom.getProperties().containsKey("formDefId"));
     }
+
+    private static Map<String, String> column(String gridId, String field, String label, String type, String format, String width, String visibility) {
+        Map<String, String> result = new LinkedHashMap<>();
+        result.put("gridId", gridId); result.put("value", field); result.put("label", label);
+        result.put("formatType", type); result.put("format", format); result.put("width", width); result.put("visibility", visibility);
+        return result;
+    }
+    private static void attachHierarchy(Grid root) {
+        Form containing = new Form(); containing.setProperty("id", "main");
+        List<Element> elements = new ArrayList<>(); elements.add(root); elements.addAll(root.grids.values());
+        containing.setChildren(elements);
+        for (Element element : elements) element.setParent(containing);
+        root.setProperty("enableNested", "true");
+    }
+    @Test public void nestedColumnsOverrideOnlyTheirChildAndUseTheExistingHeaderAndFormatterPipeline() {
+        Grid root = hierarchy(); attachHierarchy(root);
+        Grid areas = root.grids.get("areas"), groups = root.grids.get("groups");
+        Map<String, String> old = column("areas", "name", "Old Area", "text", "", "", "yes");
+        areas.setProperty("options", Arrays.asList(old));
+        groups.setProperty("options", Arrays.asList(column("groups", "name", "Group", "text", "", "", "yes")));
+        root.setProperty("options", Arrays.asList(column("plants", "name", "Plant", "text", "", "", "yes")));
+        Map<String, String> name = column("areas", "name", "<b>Area Name</b>", "text", "", "35%", "yes");
+        name.put("sql", "not exposed");
+        root.setProperty("nestedColumns", new Object[]{
+            column("areas", "parentId", "Parent", "text", "", "", "no"),
+            name,
+            column("areas", "amount", "Amount", "decimal", "2", "120px", "yes"),
+            column("areas", "inspectionDate", "Inspection Date", "date", "yyyy-MM-dd", "", "yes"),
+            column("areas", "attachment", "Attachment", "file", "", "", "yes")
+        });
+        Map<String, Map<String, Object>> headers = areas.getHeaderMap(new FormData());
+        assertEquals(Arrays.asList("parentId", "name", "amount", "inspectionDate", "attachment"), new ArrayList<>(headers.keySet()));
+        assertEquals("no", headers.get("parentId").get("visibility"));
+        assertEquals("<b>Area Name</b>", headers.get("name").get("label")); assertEquals("35%", headers.get("name").get("width"));
+        assertEquals("2", headers.get("amount").get("format"));
+        assertEquals("yyyy-MM-dd", headers.get("inspectionDate").get("format"));
+        assertEquals("file", headers.get("attachment").get("formatType"));
+        assertEquals("12.30", areas.formatColumn("amount", headers.get("amount"), "a1", "12.3", "app", 1L, "/jw"));
+        assertEquals("&lt;script&gt;", areas.formatColumn("name", headers.get("name"), "a1", "<script>", "app", 1L, "/jw"));
+        assertEquals("Group", groups.getHeaderMap(new FormData()).get("name").get("label"));
+        assertEquals("Plant", root.getHeaderMap(new FormData()).get("name").get("label"));
+        assertEquals("Old Area", old.get("label")); assertEquals("<b>Area Name</b>", name.get("label"));
+        JSONArray schema = new JSONArray(root.getNestedRelationsJson());
+        for (int i = 0; i < schema.length(); i++) {
+            if ("areas".equals(schema.getJSONObject(i).getString("gridId"))) {
+                JSONArray columns = schema.getJSONObject(i).getJSONArray("columns");
+                assertEquals(5, columns.length()); assertFalse(columns.getJSONObject(1).has("sql"));
+                assertFalse(columns.getJSONObject(1).has("gridId"));
+            } else assertFalse(schema.getJSONObject(i).has("columns"));
+        }
+    }
+    @Test public void nestedColumnsValidateGridFieldDuplicateFormatAndVisibility() {
+        Grid root = hierarchy();
+        root.setProperty("nestedColumns", new Object[]{column("areas", "name", "Area", "text", "", "", "yes")});
+        assertTrue(root.validateNestedRows(new FormData()));
+        for (Map<String, String> bad : Arrays.asList(
+                column("missing", "name", "Area", "text", "", "", "yes"),
+                column("areas", "missingField", "Area", "text", "", "", "yes"),
+                column("areas", "name", "Area", "invalid", "", "", "yes"),
+                column("areas", "name", "Area", "text", "", "", "invalid"))) {
+            root.setProperty("nestedColumns", new Object[]{bad});
+            FormData data = new FormData(); assertFalse(root.validateNestedRows(data));
+            assertTrue(data.getFormErrors().values().toString().contains("Nested Columns"));
+        }
+        root.setProperty("nestedColumns", new Object[]{column("areas", "name", "Name", "text", "", "", "yes"),
+                column("areas", "name", "Other", "text", "", "", "no")});
+        assertFalse(root.validateNestedRows(new FormData()));
+        root.setProperty("nestedColumns", Arrays.asList(column("areas", "createdByName", "Creator", "", "", "", "")));
+        assertTrue(root.validateNestedRows(new FormData()));
+        assertEquals("text", root.getNestedColumns().get(0).get("formatType"));
+        assertEquals("yes", root.getNestedColumns().get(0).get("visibility"));
+    }
+    @Test public void nestedColumnsAreOptionalAndFallbackToSourceColumnsWhenNestingIsOff() {
+        Grid root = hierarchy(); attachHierarchy(root); Grid areas = root.grids.get("areas");
+        List<Map<String, String>> source = Arrays.asList(column("areas", "name", "Source", "text", "", "", "yes"));
+        areas.setProperty("options", source);
+        assertSame(source, areas.getEffectiveColumns());
+        root.setProperty("nestedColumns", new Object[]{column("areas", "parentId", "Nested", "text", "", "", "no")});
+        assertNotSame(source, areas.getEffectiveColumns());
+        root.setProperty("enableNested", "false");
+        assertSame(source, areas.getEffectiveColumns());
+    }
+
 }

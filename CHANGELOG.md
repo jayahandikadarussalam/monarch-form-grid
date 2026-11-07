@@ -1,5 +1,32 @@
 # Changelog
 
+## [2.11.0] - 2026-11-07
+
+### Ditambahkan
+- Checkbox **Disable Duplicate** mandiri pada setiap relasi nested. Saat aktif, combo Duplicate disembunyikan dan ikon copy pada subgrid tidak ditampilkan.
+- Mode duplicate tetap tersimpan saat disembunyikan; konfigurasi lain dan child lain tidak terpengaruh.
+- Layout relasi tetap dua baris, dengan kontrol Move/Delete di sisi kanan. Kolom CSV Disable Duplicate ditambahkan di akhir; konfigurasi lama memakai default `false`.
+
+## [2.10.2] - 2026-11-07
+
+### Diubah
+- Duplicate Mode pada grid utama disembunyikan saat Disable Duplicate dicentang, menggunakan conditional properties native Joget.
+
+## [2.10.1] - 2026-11-07
+
+### Diubah
+- Nested Columns ditata menjadi kartu dua baris berlabel seperti Child Tables / Subgrids; panel sempit menyesuaikan jumlah kolom.
+- Pengaturan utama Show popup when duplicate? menjadi select box **Duplicate Mode**, dengan pilihan **Default** dan **Popup Dialog** yang sama dengan nested.
+- Default langsung menyalin baris; Popup Dialog membuka Form dahulu. Nilai tersimpan tetap `false`/`true`, dan Disable Duplicate tetap tersedia.
+
+## [2.10.0] - 2026-11-07
+
+### Ditambahkan
+- **Nested Columns** pada properties root: pilih Child Grid ID, lalu atur Field ID, Label, Format Type, Format, Width, dan Visibility menggunakan grid properties native Joget.
+- Dropdown Child Grid ID mengikuti relasi yang dikonfigurasi; autocomplete Field ID mengikuti Child Form ID masing-masing child, termasuk saat mengganti Form, menambah baris, atau memuat CSV.
+- Kolom nested memakai jalur render/formatter child yang sama dengan Columns utama, termasuk urutan, visibilitas, lebar, serta metadata Add/Edit/Duplicate. Child tanpa konfigurasi Nested Columns tetap memakai Columns source.
+- Validasi mapping grid, field, duplikasi kolom, tipe format, dan visibilitas; contoh konfigurasi dan CSV kolom Area.
+
 ## [2.9.0] - 2026-11-07
 
 ### Diubah

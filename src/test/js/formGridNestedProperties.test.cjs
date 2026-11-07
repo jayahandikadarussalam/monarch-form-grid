@@ -8,25 +8,28 @@ const root = path.join(__dirname, '../../main/resources');
 const schema = JSON.parse(fs.readFileSync(path.join(root,'properties/FormGridCustom.json'),'utf8').replace('%s','{}'));
 const properties = schema.flatMap(page=>page.properties);
 const definition = properties.find(p=>p.name==='nestedChildren');
+const columnsDefinition = properties.find(p=>p.name==='nestedColumns');
 const script = fs.readFileSync(path.join(root,'resources/js/formGridNestedProperties.js'),'utf8');
 const escape = value => String(value ?? '').replaceAll('&','&amp;').replaceAll('"','&quot;').replaceAll('<','&lt;');
-const first = {gridId:'areasGrid',formDefId:'areass',label:'Areas',parentGridId:'',parentKey:'id',foreignKey:'parentid',sortWithButtons:'true',sortField:'sort',enableDuplicate:'false'};
-function row(value={},model=false) {
-    return `<tr${model?' class="grid_model" style="display:none"':''}>${definition.columns.map(column=>{
+const first = {gridId:'areasGrid',formDefId:'areass',label:'Areas',parentGridId:'',parentKey:'id',foreignKey:'parentid',sortWithButtons:'true',sortField:'sort',enableDuplicate:'false',disabledDuplicate:'false'};
+function row(value={},model=false,gridDefinition=definition) {
+    return `<tr${model?' class="grid_model" style="display:none"':''}>${gridDefinition.columns.map(column=>{
         const raw = value[column.key] || '';
         let control;
         if(column.type==='truefalse') control=`<input type="checkbox" name="${column.key}" value="true"${raw==='true'?' checked':''}>`;
-        else if(column.type==='selectbox' && column.options) control=`<select name="${column.key}">${column.options.map(o=>`<option value="${o.value}"${(raw||column.value)===o.value?' selected':''}>${o.label}</option>`).join('')}</select>`;
+        else if(column.options && column.type!=='autocomplete') control=`<select name="${column.key}" data-value="${escape(raw)}">${column.options.map(o=>`<option value="${o.value}"${(raw||column.value)===o.value?' selected':''}>${o.label}</option>`).join('')}</select>`;
         else if(column.options_ajax) control=`<select name="${column.key}"><option value=""></option><option value="areass"${raw==='areass'?' selected':''}>Area</option></select>`;
         else control=`<input name="${column.key}" value="${escape(raw)}">`;
         return `<td><span>${control}</span></td>`;
     }).join('')}<td class="property-type-grid-action-column"><a class="property-type-grid-action-delete">Delete</a></td></tr>`;
 }
-function setup({suggestions=false}={}) {
+function setup({suggestions=false,columns=[]}={}) {
     const dom = new JSDOM(`<div id="editor"><input id="editor_id" value="plants"><input id="editor_formDefId" value="plantForm"><div property-name="nestedChildren" class="property-editor-property property-type-grid">
         <div id="editor_nestedChildren_input"><table id="editor_nestedChildren"><tbody>
         <tr class="grid_header">${definition.columns.map(c=>`<th>${c.label}</th>`).join('')}<th></th></tr>${row({},true)}${row(first)}</tbody></table>
         <a class="property-type-grid-action-add">Add</a></div></div>
+        <div class="property-editor-property"><div id="editor_nestedColumns_input"><table id="editor_nestedColumns"><tbody>
+        <tr class="grid_header">${columnsDefinition.columns.map(c=>`<th>${c.label}</th>`).join('')}<th></th></tr>${row({},true,columnsDefinition)}${columns.map(c=>row(c,false,columnsDefinition)).join('')}</tbody></table></div></div>
         <div class="property-editor-property"><div id="editor_nestedPropertiesLayout_input"></div></div></div>
         <div id="unrelated"><div property-name="nestedChildren" class="property-editor-property"><table><tr><td>Unrelated</td></tr></table></div></div>`,{runScripts:'outside-only'});
     const window=dom.window,$=jquery(window);window.$=window.jQuery=$;
@@ -43,7 +46,7 @@ function setup({suggestions=false}={}) {
     const helper=window.eval(script);
     const helperProperties={name:'nestedPropertiesLayout'};
     if(suggestions) helperProperties.field_options_url=properties.find(p=>p.name==='nestedPropertiesLayout').field_options_url;
-    Object.assign(helper,{id:'editor_nestedPropertiesLayout',properties:helperProperties,options:{contextPath:'/jw',appPath:'/demo/1'},editor:$('#editor'),editorObject:{fields:{nestedChildren:{properties:definition,value:[first]}}}});
+    Object.assign(helper,{id:'editor_nestedPropertiesLayout',properties:helperProperties,options:{contextPath:'/jw',appPath:'/demo/1'},editor:$('#editor'),editorObject:{fields:{nestedChildren:{properties:definition,value:[first]},nestedColumns:{properties:columnsDefinition,value:columns}}}});
     $('#editor_nestedPropertiesLayout_input').html(helper.renderField());
     helper.initScripting();
     function close(){helper.nestedPropertiesObserver.disconnect();window.close();}
@@ -58,8 +61,8 @@ test('the native grid is laid out in two rows, with labeled fields and no change
     const s=setup();t.after(s.close);
     const data=s.table.find('tr').not('.grid_header,.grid_model').first();
     assert.deepEqual(values(data),first);
-    assert.equal(data.children('td').length,10);
-    assert.equal(data.find('.monarch-nested-field-label').length,9);
+    assert.equal(data.children('td').length,11);
+    assert.equal(data.find('.monarch-nested-field-label').length,10);
     assert.equal(s.table.closest('.property-editor-property').hasClass('monarch-nested-properties'),true);
     assert.equal(s.$('#unrelated .monarch-nested-properties').length,0);
     assert.match(s.helper.renderField(),/grid-template-columns:repeat\(5,minmax\(0,1fr\)\)/);
@@ -72,7 +75,7 @@ test('sort checkbox and duplicate modes serialize as the existing true/false str
     const s=setup();t.after(s.close);const data=s.table.find('tr').not('.grid_header,.grid_model').first();
     assert.equal(data.find('[name="sortWithButtons"]').prop('checked'),true);
     assert.equal(data.find('[name="enableDuplicate"]').val(),'false');
-    assert.deepEqual(data.find('[name="enableDuplicate"] option').map(function(){return this.text;}).get(),['Default','Pop Up Dialog']);
+    assert.deepEqual(data.find('[name="enableDuplicate"] option').map(function(){return this.text;}).get(),['Default','Popup Dialog']);
     data.find('[name="sortWithButtons"]').prop('checked',false).trigger('change');
     data.find('[name="enableDuplicate"]').val('true').trigger('change');
     assert.equal(values(data).sortWithButtons,'false');assert.equal(values(data).enableDuplicate,'true');
@@ -86,7 +89,7 @@ test('adding a native model row and loading Form options retain one label per co
     const control=added.find('[name="formDefId"]')[0];
     added.find('[name="formDefId"]').append('<option value="other">Other Form</option>');
     await new Promise(resolve=>setTimeout(resolve,0));
-    assert.equal(added.find('.monarch-nested-field-label').length,9);
+    assert.equal(added.find('.monarch-nested-field-label').length,10);
     assert.equal(added.find('[name="enableDuplicate"]').val(),'false');
     assert.equal(added.find('[name="sortWithButtons"]').prop('checked'),false);
     assert.equal(added.find('[name="formDefId"]')[0],control);
@@ -98,14 +101,14 @@ test('the layout also applies after a native CSV switch recreates the table',asy
     const replacement=s.$(`<table id="editor_nestedChildren"><tbody><tr class="grid_header">${definition.columns.map(c=>`<th>${c.label}</th>`).join('')}<th></th></tr>${row(first)}</tbody></table>`).prependTo(input);
     await new Promise(resolve=>setTimeout(resolve,0));
     const restored=replacement.find('tr').not('.grid_header').first();
-    assert.equal(restored.find('.monarch-nested-field-label').length,9);assert.deepEqual(values(restored),first);
+    assert.equal(restored.find('.monarch-nested-field-label').length,10);assert.deepEqual(values(restored),first);
 });
 test('the presentation helper is versioned and leaves native grid, Form AJAX, and CSV column order intact',()=>{
     assert.equal(definition.type,'grid');
     const helper=properties.find(p=>p.name==='nestedPropertiesLayout');
-    assert.equal(helper.type,'custom');assert.match(helper.script_url,/formGridNestedProperties\.js\?v=2\.9\.0$/);
+    assert.equal(helper.type,'custom');assert.match(helper.script_url,/formGridNestedProperties\.js\?v=2\.11\.0$/);
     assert.equal(definition.columns.find(c=>c.key==='formDefId').type,'selectbox');
-    assert.equal(definition.columns.map(c=>first[c.key]).join(';'),'areasGrid;areass;Areas;;id;parentid;true;sort;false');
+    assert.equal(definition.columns.map(c=>first[c.key]).join(';'),'areasGrid;areass;Areas;;id;parentid;true;sort;false;false');
 });
 function search(input,term) {
     let result;
@@ -173,4 +176,80 @@ test('Sort Field visibility follows only its own row checkbox and retains the sa
     assert.equal(added.find('[name="sortField"]').closest('td').css('display'),'none');
     added.find('[name="sortWithButtons"]').prop('checked',true).trigger('change');
     assert.notEqual(added.find('[name="sortField"]').closest('td').css('display'),'none');
+});
+
+test('Nested Columns exposes the native Columns controls with a configured child grid selector',()=>{
+    assert.equal(columnsDefinition.type,'grid');assert.equal(columnsDefinition.control_field,'enableNested');
+    assert.deepEqual(columnsDefinition.columns.map(c=>c.key),['gridId','value','label','formatType','format','width','visibility']);
+    const main=properties.find(p=>p.name==='options');
+    for(const key of ['formatType','format','width','visibility'])
+        assert.deepEqual(columnsDefinition.columns.find(c=>c.key===key),main.columns.find(c=>c.key===key));
+    assert.equal(columnsDefinition.columns.find(c=>c.key==='value').type,'autocomplete');
+    assert.equal(columnsDefinition.columns.find(c=>c.key==='gridId').required,'True');
+});
+
+test('Nested Columns restores child selections and suggests fields from each selected child Form',async t=>{
+    const column={gridId:'areasGrid',value:'name',label:'Area Name',formatType:'text',format:'',width:'30%',visibility:'yes'};
+    const s=setup({suggestions:true,columns:[column]});t.after(s.close);
+    const table=s.$('#editor_nestedColumns'),data=table.find('tr').not('.grid_header,.grid_model').first();
+    assert.deepEqual(values(data),column);assert.equal(table.closest('.monarch-nested-columns-properties').length,1);
+    assert.equal(data.find('.monarch-nested-field-label').length,7);
+    assert.match(s.helper.renderField(),/monarch-nested-columns-properties[^}]+repeat\(4,minmax\(0,1fr\)\)/);
+    assert.deepEqual(data.find('[name="gridId"] option').map(function(){return this.value;}).get(),['','areasGrid']);
+    const old=search(data.find('[name="value"]'),'na');assert.equal(s.requests[0].params.formDefId,'areass');
+    const relation=s.$(row({...first,gridId:'groupsGrid',formDefId:'areass',label:'Groups'})).appendTo(s.table.children('tbody'));
+    relation.find('[name="formDefId"]').append('<option value="groupsForm">Groups</option>').val('groupsForm');
+    await new Promise(resolve=>setTimeout(resolve,0));
+    data.find('[name="gridId"]').val('groupsGrid').trigger('change');
+    const current=search(data.find('[name="value"]'),'');assert.equal(s.requests[1].params.formDefId,'groupsForm');
+    s.requests[1].deferred.resolve([{value:'groupName'}]);s.requests[0].deferred.resolve([{value:'name'}]);
+    assert.deepEqual(current(),['groupName']);assert.deepEqual(old(),[]);assert.equal(data.find('[name="value"]').val(),'name');
+    relation.find('[name="formDefId"]').val('areass').trigger('change');
+    const changed=search(data.find('[name="value"]'),'na');assert.deepEqual(changed(),['name']);
+    relation.find('[name="gridId"]').val('renamedGrid').trigger('change');
+    assert.equal(data.find('[name="gridId"]').val(),'groupsGrid');
+    assert.match(data.find('[name="gridId"] option:selected').text(),/not configured/);
+    const unknown=search(data.find('[name="value"]'),'');assert.deepEqual(unknown(),[]);assert.equal(s.requests.length,2);
+});
+
+test('Nested Columns supports model rows, native CSV table replacement and changed relation labels',async t=>{
+    const s=setup({suggestions:true});t.after(s.close);let table=s.$('#editor_nestedColumns');
+    const added=s.$('<tr>').html(table.find('.grid_model').html()).appendTo(table.children('tbody'));
+    await new Promise(resolve=>setTimeout(resolve,0));
+    added.find('[name="gridId"]').val('areasGrid').trigger('change');
+    assert.ok(added.find('[name="value"]').data('autocompleteTest'));
+    assert.equal(added.find('.monarch-nested-field-label').length,7);
+    savedRow(s).find('[name="label"]').val('Updated Area').trigger('change');
+    assert.equal(added.find('[name="gridId"] option:selected').text(),'areasGrid — Updated Area');
+    table.remove();
+    const column={gridId:'areasGrid',value:'newField',label:'New Field',formatType:'text',format:'',width:'200px',visibility:'no'};
+    table=s.$(`<table id="editor_nestedColumns"><tbody><tr class="grid_header"></tr>${row(column,false,columnsDefinition)}</tbody></table>`).appendTo(s.$('#editor_nestedColumns_input'));
+    await new Promise(resolve=>setTimeout(resolve,0));
+    const restored=table.find('tr').not('.grid_header').first();
+    assert.deepEqual(values(restored),column);assert.ok(restored.find('[name="value"]').data('autocompleteTest'));
+    assert.equal(restored.find('.monarch-nested-field-label').length,7);
+    const result=search(restored.find('[name="value"]'),'new');assert.equal(s.requests[0].params.formDefId,'areass');
+    s.requests[0].deferred.resolve([{value:'newField'}]);assert.deepEqual(result(),['newField']);
+});
+
+test('Disable Duplicate hides only its own nested mode without clearing it, including newly added rows',async t=>{
+    const s=setup();t.after(s.close);const data=savedRow(s),mode=data.find('[name="enableDuplicate"]');
+    mode.val('true').trigger('change');
+    const other=s.$(row({...first,gridId:'groupsGrid',disabledDuplicate:'true'})).appendTo(s.table.children('tbody'));
+    await new Promise(resolve=>setTimeout(resolve,0));
+    assert.notEqual(mode.closest('td').css('display'),'none');
+    assert.equal(other.find('[name="enableDuplicate"]').closest('td').css('display'),'none');
+    data.find('[name="disabledDuplicate"]').prop('checked',true).trigger('change');
+    assert.equal(mode.closest('td').css('display'),'none');assert.equal(values(data).enableDuplicate,'true');
+    assert.equal(values(data).disabledDuplicate,'true');assert.equal(mode.prop('disabled'),false);
+    other.find('[name="disabledDuplicate"]').prop('checked',false).trigger('change');
+    assert.notEqual(other.find('[name="enableDuplicate"]').closest('td').css('display'),'none');
+    assert.equal(mode.closest('td').css('display'),'none');
+    data.find('[name="disabledDuplicate"]').prop('checked',false).trigger('change');
+    assert.notEqual(mode.closest('td').css('display'),'none');assert.equal(mode.val(),'true');
+    const added=s.$('<tr>').html(s.table.find('tr.grid_model').html()).appendTo(s.table.children('tbody'));
+    await new Promise(resolve=>setTimeout(resolve,0));
+    assert.equal(added.find('[name="disabledDuplicate"]').prop('checked'),false);
+    added.find('[name="disabledDuplicate"]').prop('checked',true).trigger('change');
+    assert.equal(added.find('[name="enableDuplicate"]').closest('td').css('display'),'none');
 });

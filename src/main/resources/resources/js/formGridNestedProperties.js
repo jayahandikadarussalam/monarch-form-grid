@@ -7,12 +7,17 @@
         '.monarch-nested-properties table>tbody{display:block}',
         '.monarch-nested-properties tr.grid_header,.monarch-nested-properties tr.grid_model{display:none!important}',
         '.monarch-nested-properties tr:not(.grid_header):not(.grid_model){display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px 16px;padding:16px;margin:0 0 14px;border:1px solid #e0e0e0;border-radius:4px;background:transparent}',
+        '.monarch-nested-columns-properties tr:not(.grid_header):not(.grid_model){grid-template-columns:repeat(4,minmax(0,1fr))}',
+        '.monarch-nested-relations-properties tr:not(.grid_header):not(.grid_model){position:relative;padding-right:64px}',
         '.monarch-nested-properties tr>td{display:block;width:auto!important;min-width:0;padding:0!important;border:0!important;vertical-align:top;box-sizing:border-box}',
         '.monarch-nested-properties tr>td.monarch-nested-sort-hidden{display:none!important}',
+        '.monarch-nested-properties tr>td.monarch-nested-duplicate-hidden{display:none!important}',
+        '.monarch-nested-properties tr>td.monarch-nested-duplicate-mode{order:1}',
         '.monarch-nested-properties tr>td>span{display:block;min-width:0}',
         '.monarch-nested-properties .monarch-nested-field-label{display:block;margin-bottom:7px;font-weight:600;line-height:1.4;min-height:1.4em;white-space:normal}',
         '.monarch-nested-properties input:not([type=checkbox]),.monarch-nested-properties select,.monarch-nested-properties .chosen-container{width:100%!important;min-width:0;max-width:100%;box-sizing:border-box}',
         '.monarch-nested-properties .property-type-grid-action-column{align-self:end;text-align:right;white-space:nowrap;padding-bottom:5px!important}',
+        '.monarch-nested-relations-properties .property-type-grid-action-column{position:absolute;right:12px;bottom:16px;display:flex;flex-direction:column;align-items:center;gap:6px}',
         '@container (max-width:720px){.monarch-nested-properties tr:not(.grid_header):not(.grid_model){grid-template-columns:repeat(3,minmax(0,1fr))}}',
         '@container (max-width:440px){.monarch-nested-properties tr:not(.grid_header):not(.grid_model){grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}}'
     ].join('\n');
@@ -26,6 +31,7 @@
             var ownInput = document.getElementById(helper.id + '_input');
             if (ownInput) $(ownInput).closest('.property-editor-property').hide();
             var targetId = helper.id.slice(0, -helper.properties.name.length) + 'nestedChildren';
+            var columnsId = helper.id.slice(0, -helper.properties.name.length) + 'nestedColumns';
             var editor = $(helper.editor)[0];
             if (!editor) return;
             if (helper.nestedPropertiesObserver) helper.nestedPropertiesObserver.disconnect();
@@ -38,24 +44,28 @@
             var eventNamespace = '.monarchNestedFields_' + helper.id.replace(/[^a-zA-Z0-9]/g, '_');
             $(editor).off(eventNamespace).on('change' + eventNamespace, function(event) {
                 var target = $(event.target);
-                if (target.attr('name') === 'sortWithButtons' && target.closest('table')[0] === document.getElementById(targetId)) {
-                    updateSortField(target.closest('tr'));
+                if (['sortWithButtons', 'disabledDuplicate'].indexOf(target.attr('name')) !== -1 &&
+                        target.closest('table')[0] === document.getElementById(targetId)) {
+                    updateConditionalFields(target.closest('tr'));
                     return;
                 }
-                if (['formDefId', 'parentGridId', 'gridId'].indexOf(target.attr('name')) === -1 &&
+                if (['formDefId', 'parentGridId', 'gridId', 'label'].indexOf(target.attr('name')) === -1 &&
                         event.target.id !== prefix + 'formDefId' && event.target.id !== prefix + 'id') return;
-                $(document.getElementById(targetId)).find('.monarch-nested-field-input').each(function() {
+                $(document.getElementById(targetId)).add(document.getElementById(columnsId)).find('.monarch-nested-field-input').each(function() {
                     var input = $(this);
                     input.data('monarchFieldRequest', (input.data('monarchFieldRequest') || 0) + 1).removeAttr('aria-busy');
                     input.autocomplete('close');
                 });
+                decorateColumns();
             });
 
-            function updateSortField(row) {
+            function updateConditionalFields(row) {
                 var enabled = row.find('[name="sortWithButtons"]').prop('checked');
                 var input = row.find('[name="sortField"]');
                 input.closest('td').toggleClass('monarch-nested-sort-hidden', !enabled);
                 if (!enabled && input.data('monarchFieldAutocomplete')) input.autocomplete('close');
+                row.find('[name="enableDuplicate"]').closest('td').addClass('monarch-nested-duplicate-mode')
+                    .toggleClass('monarch-nested-duplicate-hidden', row.find('[name="disabledDuplicate"]').prop('checked') === true);
             }
 
             function value(input) {
@@ -72,6 +82,13 @@
                 return raw == null ? '' : String(raw).trim();
             }
             function sourceForm(row, key) {
+                if (row.closest('table')[0] === document.getElementById(columnsId)) {
+                    var childId = value(row.find('[name="gridId"]').first());
+                    var relations = relationRows().filter(function() {
+                        return value($(this).find('[name="gridId"]').first()) === childId;
+                    });
+                    return relations.length === 1 ? value(relations.find('[name="formDefId"]').first()) : '';
+                }
                 if (key !== 'parentKey') return value(row.find('[name="formDefId"]').first());
                 var parent = value(row.find('[name="parentGridId"]').first());
                 if (!parent || parent === rootValue('id')) return rootValue('formDefId');
@@ -97,7 +114,7 @@
             }
             function autocomplete(input, row) {
                 var key = input.attr('name');
-                if (!endpoint || !$.fn.autocomplete || ['parentKey', 'foreignKey', 'sortField'].indexOf(key) === -1 ||
+                if (!endpoint || !$.fn.autocomplete || ['parentKey', 'foreignKey', 'sortField', 'value'].indexOf(key) === -1 ||
                         input.data('monarchFieldAutocomplete')) return;
                 input.data('monarchFieldAutocomplete', true).addClass('monarch-nested-field-input').autocomplete({
                     minLength: 0,
@@ -126,12 +143,40 @@
                 }).on('focus' + eventNamespace, function() { input.autocomplete('search', input.val() || ''); });
             }
 
-            function decorate() {
-                var table = document.getElementById(targetId);
-                if (!table || !$.contains(editor, table)) return;
-                var container = $(table).closest('.property-editor-property').addClass('monarch-nested-properties');
-                if (!container.length) return;
-                var field = helper.editorObject && helper.editorObject.fields && helper.editorObject.fields.nestedChildren;
+            function relationRows() {
+                return $(document.getElementById(targetId)).find('tr').not('.grid_header,.grid_model');
+            }
+            function decorateColumns() {
+                var table = $(document.getElementById(columnsId));
+                if (!table.length || !$.contains(editor, table[0])) return;
+                table.closest('.property-editor-property').addClass('monarch-nested-properties monarch-nested-columns-properties');
+                decorateRows(table, 'nestedColumns');
+                var choices = [], seen = new Set();
+                relationRows().each(function() {
+                    var row = $(this), id = value(row.find('[name="gridId"]').first());
+                    if (!id || seen.has(id)) return;
+                    seen.add(id);
+                    var label = value(row.find('[name="label"]').first());
+                    choices.push({value: id, label: label ? id + ' — ' + label : id});
+                });
+                table.find('tr').not('.grid_header').each(function() {
+                    var row = $(this), select = row.find('select[name="gridId"]');
+                    var selected = value(select);
+                    var options = [{value: '', label: ''}].concat(choices);
+                    // Keep removed/renamed mappings visible so developers can correct them explicitly.
+                    if (selected && !seen.has(selected)) options.push({value: selected, label: selected + ' (not configured)'});
+                    var signature = JSON.stringify(options);
+                    if (select.data('monarchGridChoices') !== signature) {
+                        select.data('monarchGridChoices', signature).empty();
+                        options.forEach(function(option) { select.append($('<option>').val(option.value).text(option.label)); });
+                        select.val(selected).trigger('chosen:updated');
+                    }
+                    if (!row.hasClass('grid_model')) autocomplete(row.find('[name="value"]'), row);
+                });
+            }
+
+            function decorateRows(table, name) {
+                var field = helper.editorObject && helper.editorObject.fields && helper.editorObject.fields[name];
                 var columns = field && field.properties.columns;
                 var header = $(table).find('tr.grid_header').first().children('th');
                 $(table).find('tr').not('.grid_header').each(function() {
@@ -154,8 +199,15 @@
                             if (input.prop('checked')) input.attr('checked', 'checked'); else input.removeAttr('checked');
                         }
                     });
-                    updateSortField(row);
+                    if (name === 'nestedChildren') updateConditionalFields(row);
                 });
+            }
+            function decorate() {
+                decorateColumns();
+                var table = document.getElementById(targetId);
+                if (!table || !$.contains(editor, table)) return;
+                var container = $(table).closest('.property-editor-property').addClass('monarch-nested-properties monarch-nested-relations-properties');
+                if (container.length) decorateRows($(table), 'nestedChildren');
             }
             decorate();
             helper.nestedPropertiesObserver = new MutationObserver(decorate);

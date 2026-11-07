@@ -1,6 +1,6 @@
 # Dynamic nested subgrids
 
-Version 2.9.0 provides optional expandable parent/child views. Nesting is disabled by default. Configure the complete hierarchy on one root Shadow Form Grid; additional tables and levels require Form Builder configuration, without rebuilding the plugin.
+Version 2.11.0 provides optional expandable parent/child views. Nesting is disabled by default. Configure the complete hierarchy on one root Shadow Form Grid; additional tables and levels require Form Builder configuration, without rebuilding the plugin.
 
 ## Form Builder setup
 
@@ -18,7 +18,34 @@ Version 2.9.0 provides optional expandable parent/child views. Nesting is disabl
 
 The root grid is the default parent when Parent Grid ID is empty. Parent Key Field defaults to `id`. You can instead use a stable, non-empty, unique field from the parent Form. Use Form Field IDs, without the database `c_` prefix. Definition order does not matter. Multiple children can reference the same parent grid to create branches.
 
-The child Form's configured table determines the database table. Child Grid ID identifies a **Form Grid element**, not a Form Definition ID or SQL table name. Configure the foreign key field in the child Form even if it is omitted from visible Columns.
+The child Form's configured table determines the database table. Child Grid ID identifies a **Form Grid element**, not a Form Definition ID or SQL table name. Configure the foreign key field in the child Form even if it is omitted from visible Columns. Display columns can be configured directly in **Nested Columns** on the root grid.
+
+## Configure nested display columns
+
+Open **Nested Subgrids → Nested Columns**, below Child Tables / Subgrids. This uses the same native property grid as the main Columns setting, with an additional **Child Grid ID** dropdown to identify the subgrid:
+
+Each column configuration is displayed in two rows on a wide panel: Child Grid ID, Field ID, Label, and Format Type on top; Format, Width, Visibility, and native Move/Delete controls below. Narrow panels wrap into fewer columns. Native CSV input and stored column order are preserved.
+
+| Child Grid ID | Field ID | Label | Format Type | Format | Width | Visibility |
+| --- | --- | --- | --- | --- | --- | --- |
+| areasGrid | name | Area Name | Text | | 35% | Yes |
+| areasGrid | inspectionDate | Inspection Date | Date | yyyy-MM-dd | 180px | Yes |
+| areasGrid | parentid | Parent | Text | | | No |
+
+The dropdown lists the Child Grid IDs configured above. Field ID autocomplete uses the selected child's **Child Form ID**, so adding a field to the Area Form makes it discoverable here after reloading Form Builder. Select or type the Field ID without `c_`, then choose its label, format, width, and visibility. The example `inspectionDate` must exist in that child Form before it can be used.
+
+Rows determine the display order within each child; use the native Move Up/Move Down controls to reorder them. All native format choices are available: Text, HTML, newline to BR, Decimal, Currency, Date, File, Image, and Options. Formatting uses the child grid's existing server/client formatter, popup Form, and option/file metadata. **Visibility = No** hides the column while preserving its row data.
+
+When a child has at least one Nested Columns entry, those entries define its complete column list and override that source grid's Columns. A child with no entries uses its existing source Columns. Other children and the root grid's Columns are unaffected. Removing all entries for a child restores its source Columns after saving the configuration and reloading the form. The source grid and its binders must still exist; Nested Columns configures display fields and does not create Form fields or database columns.
+
+The separate Nested Columns CSV order is:
+
+```text
+Child Grid ID;Field ID;Label;Format Type;Format;Width;Visibility
+areasGrid;name;Area Name;text;;35%;yes
+```
+
+Its stored property is `nestedColumns`; Child Tables / Subgrids keeps its original nine CSV columns and appends Disable Duplicate as the tenth column. Unknown child mappings, fields missing from the selected Form, duplicate Field IDs within a child, and invalid format/visibility values produce configuration errors. If a child is removed or renamed, its previous selection remains visible as “not configured” until corrected.
 
 ## Select the child Form directly in nested properties
 
@@ -39,13 +66,13 @@ The referenced child grid must still exist in the same containing form. Selectin
 For the supplied Area example, the CSV column order is:
 
 ```text
-Child Grid ID;Child Form ID;Subgrid Label;Parent Grid ID;Parent Key Field;Child Foreign Key Field;Sort with Buttons;Sort Field;Duplicate
+Child Grid ID;Child Form ID;Subgrid Label;Parent Grid ID;Parent Key Field;Child Foreign Key Field;Sort with Buttons;Sort Field;Duplicate;Disable Duplicate
 ```
 
 Paste this row into the property grid's CSV input:
 
 ```text
-areasGrid;areass;Areas;;id;parentid;true;sort;true
+areasGrid;areass;Areas;;id;parentid;true;sort;true;false
 ```
 
 ## Independent nested properties and duplication popups
@@ -56,24 +83,27 @@ Configure actions separately for every relation in **Nested Subgrids → Child T
 | --- | --- | --- |
 | Sort with Buttons | Checkbox; default unchecked | Shows up/down icons for rows with the same parent. |
 | Sort Field | Form Field ID; default `sort` | Visible only while Sort with Buttons is checked. Persists this nested grid's row order. Add a corresponding field, normally a Hidden Field, to its child Form. |
-| Duplicate | Dropdown: Default or Pop Up Dialog; default Default | Default duplicates immediately; Pop Up Dialog opens the child Form before inserting the copy. |
+| Disable Duplicate | Checkbox; default unchecked | Hides the Duplicate mode selector and removes the copy icon for this relation. The selected mode is retained. |
+| Duplicate | Dropdown: Default or Popup Dialog; default Default | Default duplicates immediately; Popup Dialog opens the child Form before inserting the copy. |
 
 Each child configuration is displayed as two rows on a wide properties panel:
 
 - Top: Child Grid ID, Child Form ID, Subgrid Label, Parent Grid ID, Parent Key Field.
-- Bottom: Child Foreign Key Field, Sort with Buttons checkbox, conditional Sort Field, Duplicate dropdown, and native move/delete controls.
+- Bottom: Child Foreign Key Field, Sort with Buttons checkbox, conditional Sort Field, Disable Duplicate checkbox, and conditional Duplicate dropdown. Native move/delete controls sit in the right gutter.
 
 The fields wrap further when the properties panel is narrow. The native Form dropdown, required-field validation, Add/Move/Delete controls and CSV input remain available. Unchecking Sort with Buttons hides Sort Field without clearing its value. Each row controls its own visibility, including rows added or loaded through CSV.
 
-These are independent nested properties. They do not inherit the root or source child grid's Enable Sorting, Disable Duplicate, or Show Popup on Duplicate. There is no “Use Child Grid Settings” option. Legacy blank action values use the defaults above. CSV column order and property keys are unchanged: the existing `enableDuplicate` key now selects the mode, with `false` = Default and `true` = Pop Up Dialog. Previously checked configurations retain popup behavior; previously unchecked configurations now duplicate directly. Both dropdown choices offer duplication, subject to Read Only, Disable Add, and maximum rows.
+These are independent nested properties. They do not inherit the root or source child grid's Enable Sorting, Disable Duplicate, or Duplicate Mode. There is no “Use Child Grid Settings” option. Legacy blank action values use the defaults above. The original CSV column order and property keys are retained; `disabledDuplicate` is appended with default `false` for legacy mappings: the existing `enableDuplicate` key now selects the mode, with `false` = Default and `true` = Popup Dialog. Previously checked configurations retain popup behavior; previously unchecked configurations now duplicate directly. Both dropdown choices offer duplication while Disable Duplicate is unchecked, subject to Read Only, Disable Add, and maximum rows.
 
 For persisted ordering, add a hidden field such as `sort` to the child Form and select it as **Sort Field in the nested relation row**. You do not need to enable sorting on the source child grid. On submit, the child grid uses the relation's Sort Field to store the ordering; on load it restores that ordering. The first child's Up button and last child's Down button are disabled separately for each parent. Sorting one parent's children preserves the order of other parents' children. The Sort Field must be separate from `id` and the child FK.
 
 Enabling **Sort with Buttons** also displays a **No.** column in the nested view. Numbers start at 1 for each parent and refresh after moving, adding, or deleting rows. The source child grid's **Show Row Number** option also displays this column when sort buttons are off. These display numbers do not become Form fields or enter the submitted row JSON. A parent with one child shows number 1 and both move buttons disabled.
 
-With **Duplicate = Default**, clicking the copy icon immediately inserts a copy beside its source, with a new ID and the same parent FK. With **Duplicate = Pop Up Dialog**, the configured child Form opens with the original row's values and a new ID. **No new row is added until that popup is submitted successfully.** Canceling adds nothing. The submitted copy is assigned back to the same parent FK, including temporary binder request parameters. The selected nested mode takes precedence over the source grid's popup setting; Default also bypasses the source grid's automatic popup for unique fields, retaining its unique-value suffix and validation. Duplicating a row copies its values without copying its descendants. Read Only, Disable Add, maximum rows, and Unique Column validation remain enforced.
+With **Duplicate = Default**, clicking the copy icon immediately inserts a copy beside its source, with a new ID and the same parent FK. With **Duplicate = Popup Dialog**, the configured child Form opens with the original row's values and a new ID. **No new row is added until that popup is submitted successfully.** Canceling adds nothing. The submitted copy is assigned back to the same parent FK, including temporary binder request parameters. The selected nested mode takes precedence over the source grid's popup setting; Default also bypasses the source grid's automatic popup for unique fields, retaining its unique-value suffix and validation. Duplicating a row copies its values without copying its descendants. Read Only, Disable Add, maximum rows, and Unique Column validation remain enforced.
 
-Example for the supplied Area setup: relation `areasGrid` → **Sort with Buttons = checked**, **Sort Field = sort**, **Duplicate = Pop Up Dialog**; Area Form `areass` → Hidden Field **sort**. The source child grid's own sorting and popup-duplicate settings may remain off. The example JSON files in `outputs/nested-grid-config/` include this independent configuration. Change the final CSV value to `false` for Default duplication.
+Example for the supplied Area setup: relation `areasGrid` → **Sort with Buttons = checked**, **Sort Field = sort**, **Duplicate = Popup Dialog**; Area Form `areass` → Hidden Field **sort**. The source child grid's own sorting and popup-duplicate settings may remain off. The example JSON files in `outputs/nested-grid-config/` include this independent configuration. The ninth CSV value selects the mode (`false` for Default, `true` for Popup Dialog); the tenth value disables duplication when `true`. Existing nine-column mappings default to Disable Duplicate unchecked.
+
+The main grid uses **UI → Duplicate → Duplicate Mode** with the same choices: **Default** (`false`) copies immediately, and **Popup Dialog** (`true`) opens its Form first. Existing checkbox values retain these meanings; blank values default to immediate copying. Unique Column still receives a copy suffix and is validated in Default mode. **Disable Duplicate** remains a separate main-grid checkbox; checking it hides Duplicate Mode, and unchecking it shows the mode selector again. Each nested relation keeps its own selected mode.
 
 ## Load and store binders
 

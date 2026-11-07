@@ -164,9 +164,9 @@
 
                 var resultJson = JSON.stringify(parsed);
 
-                // Nested relations choose their own mode. Ordinary grids retain their popup/unique-key settings.
+                // Main and nested grids use the same explicit Default / Popup Dialog modes.
                 var usePopup = args && typeof args.forcePopup === 'boolean' ? args.forcePopup :
-                    showPopup === 'true' || (uniqueKey && uniqueKey !== '');
+                    showPopup === 'true';
                 if (usePopup) {
                     // === MODE PAKAI POPUP ===
                     methods.popupForm.call(this,

@@ -329,7 +329,9 @@ test('nested properties expose the sort checkbox and two duplicate modes',()=>{
     assert.equal(property.columns.find(c=>c.key==='sortWithButtons').value,'false');
     const duplicate=property.columns.find(c=>c.key==='enableDuplicate');
     assert.equal(duplicate.type,'selectbox');assert.equal(duplicate.value,'false');
-    assert.deepEqual(duplicate.options,[{value:'false',label:'Default'},{value:'true',label:'Pop Up Dialog'}]);
+    const main=config.flatMap(page=>page.properties).find(p=>p.name==='showPopupDuplicate');
+    assert.equal(main.type,'selectbox');assert.equal(main.value,'false');assert.deepEqual(main.options,duplicate.options);
+    assert.deepEqual(duplicate.options,[{value:'false',label:'Default'},{value:'true',label:'Popup Dialog'}]);
     assert.equal(property.columns.find(c=>c.key==='sortField').value,'sort');
 });
 test('duplicate opens the correct popup at deeper nested levels before any new row is inserted',t=>{
@@ -348,8 +350,8 @@ test('Child Form ID is a required app Form dropdown beside Child Grid ID',()=>{
     assert.equal(columns[0].key,'gridId');assert.equal(columns[1].key,'formDefId');
     assert.equal(columns[1].label,'Child Form ID');assert.equal(columns[1].type,'selectbox');assert.equal(columns[1].required,'True');
     assert.equal(columns[1].options_ajax,'[CONTEXT_PATH]/web/json/console/app[APP_PATH]/forms/options');
-    const mapping={gridId:'areasGrid',formDefId:'areass',label:'Areas',parentGridId:'',parentKey:'id',foreignKey:'parentid',sortWithButtons:'true',sortField:'sort',enableDuplicate:'true'};
-    assert.equal(columns.map(c=>mapping[c.key]).join(';'),'areasGrid;areass;Areas;;id;parentid;true;sort;true');
+    const mapping={gridId:'areasGrid',formDefId:'areass',label:'Areas',parentGridId:'',parentKey:'id',foreignKey:'parentid',sortWithButtons:'true',sortField:'sort',enableDuplicate:'true',disabledDuplicate:'false'};
+    assert.equal(columns.map(c=>mapping[c.key]).join(';'),'areasGrid;areass;Areas;;id;parentid;true;sort;true;false');
 });
 test('explicit child Form mappings use the matching rendered popup and preserve normal nested callbacks',t=>{
     const s=setup([{gridId:'areas',formDefId:'areass',foreignKey:'parentId'}],{seed({grid}){
@@ -417,6 +419,47 @@ test('ordinary grid duplicate still follows its popup setting when no nested mod
     original.find('.grid-action-duplicate').formGridCustom('duplicateRow');
     assert.equal(s.popups.length,1);assert.equal(s.grid('other').getValues().length,1);
     s.grid('other').children('.popupDuplicate').val('false');
+    s.grid('other').prepend('<input disabled class="uniqueKey" value="name">');
     original.find('.grid-action-duplicate').formGridCustom('duplicateRow');
     assert.equal(s.popups.length,1);assert.equal(s.grid('other').getValues().length,2);
+    assert.match(s.grid('other').getValues()[1].name,/^Ordinary row_copy_/);
+});
+
+test('nested views preserve configured column order, labels, widths and visibility for existing and added rows',t=>{
+    const s=setup([{gridId:'areas',foreignKey:'parentId'}],{seed({grid}){
+        const area=grid('areas');
+        // Represents the source grid rendered by Java with its effective Nested Columns.
+        area.children('table').find('thead tr').prepend('<th style="width:140px">Area Code</th>');
+        area.children('table').find('tbody tr').each(function(){
+            const row=grid('areas').find(this);
+            row.prepend('<td><span class="grid-cell" column_key="code" column_type="text"></span></td>');
+        });
+        area.updateRowData(data=>{data.code='CODE-'+data.id;});
+        area.children('table').find('thead th').eq(1).text('Area Name').css('width','35%');
+    }});t.after(()=>s.dom.window.close());s.expand(s.first);
+    const headers=s.first.next().find('[data-child-grid="areas"] thead th');
+    assert.deepEqual(headers.map(function(){return s.$(this).text();}).get(),['Area Code','Area Name','']);
+    assert.equal(headers[0].style.width,'140px');assert.equal(headers[1].style.width,'35%');
+    const cells=sectionRows(s).first().children('td');
+    assert.equal(cells.eq(0).text(),'CODE-a1');assert.equal(cells.eq(1).text(),'Area One');
+    assert.equal(sectionRows(s).first().text().includes('p1'),false);
+    s.add('areas',{id:'new',name:'New Area',parentId:'p1',code:'NEW-CODE'});
+    assert.equal(sectionRows(s).last().children('td').eq(0).text(),'NEW-CODE');
+    assert.equal(sectionRows(s).last().children('td').eq(1).text(),'New Area');
+    assert.equal(s.grid('areas').getValues().at(-1).parentId,'p1');
+});
+
+test('nested Disable Duplicate removes copy actions per relation while other relations keep their modes',t=>{
+    for(const mode of ['false','true']) {
+        const s=setup([{gridId:'areas',foreignKey:'parentId',enableDuplicate:mode,disabledDuplicate:'true'},
+            {gridId:'types',parentGridId:'areas',foreignKey:'parentId',enableDuplicate:'false',disabledDuplicate:'false'}]);
+        t.after(()=>s.dom.window.close());s.expand(s.first);
+        assert.equal(sectionRows(s).find('.formgrid-nested-duplicate').length,0);
+        assert.equal(sectionRows(s).find('.formgrid-nested-edit,.formgrid-nested-delete').length,2);
+        s.first.next().find('.formgrid-nested-toggle').first().trigger('click');
+        const nested=s.first.next().find('[data-child-grid="types"] .formgrid-nested-duplicate');
+        assert.equal(nested.length,1);nested.trigger('click');
+        assert.equal(s.popups.length,0);assert.equal(s.grid('types').getValues().length,2);
+        assert.equal(s.grid('areas').getValues().length,2);
+    }
 });

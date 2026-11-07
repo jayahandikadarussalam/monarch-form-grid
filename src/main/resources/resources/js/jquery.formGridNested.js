@@ -42,9 +42,10 @@
                         parentKey: text(config.parentKey).trim() || 'id', foreignKey: text(config.foreignKey).trim(),
                         sortWithButtons: text(config.sortWithButtons).trim() || 'false',
                         sortField: text(config.sortField).trim() || 'sort',
-                        enableDuplicate: text(config.enableDuplicate).trim() || 'false'
+                        enableDuplicate: text(config.enableDuplicate).trim() || 'false',
+                        disabledDuplicate: text(config.disabledDuplicate).trim() || 'false'
                     };
-                    ['sortWithButtons', 'enableDuplicate'].forEach(function(key) {
+                    ['sortWithButtons', 'enableDuplicate', 'disabledDuplicate'].forEach(function(key) {
                         if (['true', 'false'].indexOf(node[key]) === -1) throw new Error('Invalid ' + key + ' for child grid: ' + node.gridId);
                     });
                     if (node.sortWithButtons === 'true' && (!/^[a-zA-Z0-9_]+$/.test(node.sortField) || node.sortField === 'id' || node.sortField === node.foreignKey))
@@ -162,8 +163,8 @@
                         .append(action('movedown', 'fa-arrow-down', 'Move Down', function() { moveChild(node, parentRow, source, 1); }).prop('disabled', index === count - 1)));
                 }
                 edit.append(action('edit', 'fa-pen', 'Edit Row', function() { source.find('.grid-action-edit').trigger('click'); }));
-                edit.append(action('duplicate', 'fa-copy', 'Duplicate Row', function() {
-                    if (!canAdd(node)) return;
+                if (node.disabledDuplicate !== 'true') edit.append(action('duplicate', 'fa-copy', 'Duplicate Row', function() {
+                    if (!canAdd(node) || node.disabledDuplicate === 'true') return;
                     source.find('.grid-action-duplicate').formGridCustom('duplicateRow', {
                         callback: addCallback(node, parentRow), forcePopup: node.enableDuplicate === 'true'
                     });
@@ -221,7 +222,8 @@
                         var field = $(this).find('span.grid-cell[column_key]').first();
                         if (field.length && this.style.display !== 'none') {
                             fields.push({key: field.attr('column_key'), index: index});
-                            header.append($('<th>').text(node.grid.children('table').find('thead > tr > th').eq(index).text()));
+                            var sourceHeader = node.grid.children('table').find('thead > tr > th').eq(index);
+                            header.append($('<th>').text(sourceHeader.text()).css('width', sourceHeader[0] ? sourceHeader[0].style.width : ''));
                         }
                     });
                     if (direct(node.gridId).length) header.prepend('<th class="formgrid-nested-togglecell"></th>');
