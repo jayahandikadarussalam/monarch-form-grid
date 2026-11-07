@@ -227,14 +227,14 @@
     outline-offset: 2px;
 }
 
-.grid.formgrid-custom.readonly .grid-row-actions .grid-action-duplicate,
-.grid.formgrid-custom.disabled-duplicate .grid-row-actions .grid-action-duplicate,
+.grid.formgrid-custom.readonly > table tr.grid-row > .grid-action-cell .grid-action-duplicate,
+.grid.formgrid-custom.disabled-duplicate > table tr.grid-row > .grid-action-cell .grid-action-duplicate,
 .formgrid-custom.readonly > .formgrid-custom-add,
 .formgrid-custom.disabledAdd > .formgrid-custom-add,
-.grid.formgrid-custom.readonly .grid-row-actions .grid-action-delete,
-.grid.formgrid-custom.disabledDelete .grid-row-actions .grid-action-delete,
-.grid.formgrid-custom:not(.enableSorting) .grid-row-actions .grid-reorder-buttons,
-.grid.formgrid-custom.readonly .grid-row-actions .grid-reorder-buttons {
+.grid.formgrid-custom.readonly > table tr.grid-row > .grid-action-cell .grid-action-delete,
+.grid.formgrid-custom.disabledDelete > table tr.grid-row > .grid-action-cell .grid-action-delete,
+.grid.formgrid-custom:not(.enableSorting) > table tr.grid-row > .grid-action-cell .grid-reorder-buttons,
+.grid.formgrid-custom.readonly > table tr.grid-row > .grid-action-cell .grid-reorder-buttons {
     display: none;
 }
 
@@ -251,3 +251,23 @@
 .formgrid-custom .pg-navigator .pg-current {
     font-weight: bold;
 }
+
+/* Nested views keep the original grids and their named JSON fields in the form. */
+.form-cell.formgrid-nested-source { display: none !important; }
+.formgrid-custom .formgrid-nested-togglecell { width: 38px; min-width: 38px; text-align: center; }
+.formgrid-custom .formgrid-nested-toggle { width: 28px; height: 28px; padding: 0; border: 1px solid #cbd5e1; border-radius: 4px; background: #fff; color: #334155; font-size: 20px; line-height: 1; cursor: pointer; }
+.formgrid-custom .formgrid-nested-toggle:focus-visible { outline: 2px solid #2563eb; outline-offset: 2px; }
+.formgrid-custom .formgrid-nested-root-detail > td,
+.formgrid-custom .formgrid-nested-detail > td { padding: 10px 12px 10px 24px; background: #f8fafc; }
+.formgrid-nested-section { border-left: 3px solid #cbd5e1; padding-left: 12px; margin: 0 0 12px; }
+.formgrid-nested-section:last-child { margin-bottom: 0; }
+.formgrid-nested-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 8px; }
+.formgrid-nested-scroll { overflow-x: auto; }
+.formgrid-custom .formgrid-nested-table { width: 100%; border-collapse: collapse; background: #fff; }
+.formgrid-custom .formgrid-nested-table th,
+.formgrid-custom .formgrid-nested-table td { padding: 8px 10px; border: 1px solid #e2e8f0; vertical-align: top; }
+.formgrid-custom .formgrid-nested-table .formgrid-nested-actions,
+.formgrid-custom .formgrid-nested-table .formgrid-nested-actions-header { width: 1%; white-space: nowrap; vertical-align: middle; }
+.formgrid-nested-empty { color: #64748b; text-align: center; }
+.formgrid-custom .formgrid-nested-row-number { width: 1%; white-space: nowrap; text-align: center; }
+.formgrid-nested-status:not([hidden]) { margin: 0 0 12px; }

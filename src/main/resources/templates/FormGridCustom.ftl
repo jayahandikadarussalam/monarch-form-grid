@@ -4,14 +4,15 @@
 
 <div class="form-cell full_width_field" ${elementMetaData!}>
     <#if !(request.getAttribute("com.monarch.shadow.lib.FormGridCustom")??) >
-        <link rel="stylesheet" type="text/css" href="${request.contextPath}/plugin/com.monarch.shadow.lib.FormGridCustom/css/formGridStyle.css?v=${pluginVersion!'2.3.0'}" />
-        <script type="text/javascript" src="${request.contextPath}/plugin/com.monarch.shadow.lib.FormGridCustom/js/jquery.formGridCustom.js?v=${pluginVersion!'2.3.0'}"></script>
-        <script type="text/javascript" src="${request.contextPath}/plugin/com.monarch.shadow.lib.FormGridCustom/js/jquery.gridPagingCustom.js?v=${pluginVersion!'2.3.0'}"></script>
-        <script type="text/javascript" src="${request.contextPath}/plugin/com.monarch.shadow.lib.FormGridCustom/js/jquery.formGridCustom.remake.js?v=${pluginVersion!'2.3.0'}"></script>
-        <script type="text/javascript" src="${request.contextPath}/plugin/com.monarch.shadow.lib.FormGridCustom/js/jquery.formGridEditable.js?v=${pluginVersion!'2.3.0'}"></script>
-        <script type="text/javascript" src="${request.contextPath}/plugin/com.monarch.shadow.lib.FormGridCustom/js/jquery.utils.js?v=${pluginVersion!'2.3.0'}"></script>
-        <script type="text/javascript" src="${request.contextPath}/plugin/com.monarch.shadow.lib.FormGridCustom/js/formGridImport.js?v=${pluginVersion!'2.3.0'}"></script>
-        <script type="text/javascript" src="${request.contextPath}/plugin/com.monarch.shadow.lib.FormGridCustom/js/jquery.formGridImport.js?v=${pluginVersion!'2.3.0'}"></script>
+        <link rel="stylesheet" type="text/css" href="${request.contextPath}/plugin/com.monarch.shadow.lib.FormGridCustom/css/formGridStyle.css?v=${pluginVersion!'2.9.0'}" />
+        <script type="text/javascript" src="${request.contextPath}/plugin/com.monarch.shadow.lib.FormGridCustom/js/jquery.formGridCustom.js?v=${pluginVersion!'2.9.0'}"></script>
+        <script type="text/javascript" src="${request.contextPath}/plugin/com.monarch.shadow.lib.FormGridCustom/js/jquery.gridPagingCustom.js?v=${pluginVersion!'2.9.0'}"></script>
+        <script type="text/javascript" src="${request.contextPath}/plugin/com.monarch.shadow.lib.FormGridCustom/js/jquery.formGridCustom.remake.js?v=${pluginVersion!'2.9.0'}"></script>
+        <script type="text/javascript" src="${request.contextPath}/plugin/com.monarch.shadow.lib.FormGridCustom/js/jquery.formGridEditable.js?v=${pluginVersion!'2.9.0'}"></script>
+        <script type="text/javascript" src="${request.contextPath}/plugin/com.monarch.shadow.lib.FormGridCustom/js/jquery.formGridNested.js?v=${pluginVersion!'2.9.0'}"></script>
+        <script type="text/javascript" src="${request.contextPath}/plugin/com.monarch.shadow.lib.FormGridCustom/js/jquery.utils.js?v=${pluginVersion!'2.9.0'}"></script>
+        <script type="text/javascript" src="${request.contextPath}/plugin/com.monarch.shadow.lib.FormGridCustom/js/formGridImport.js?v=${pluginVersion!'2.9.0'}"></script>
+        <script type="text/javascript" src="${request.contextPath}/plugin/com.monarch.shadow.lib.FormGridCustom/js/jquery.formGridImport.js?v=${pluginVersion!'2.9.0'}"></script>
     </#if>
     <script type="text/javascript">
         $(document).ready(function() {
@@ -32,6 +33,11 @@
             grid.formGridCustom("initPopupDialog", {contextPath: '${request.contextPath}', title: '@@form.formgrid.addEntry@@' <#if requestParams??>, requestParams: ${requestParams}</#if>});
 
             grid.gridPagingCustom({customSize: '${element.properties.pageSize!}' <#if element.properties.enableSorting! == 'true'>, dataSorting: true</#if>});
+            <#if nestedEnabled!false>
+                setTimeout(function() {
+                    grid.formGridNested({relations: JSON.parse(grid.children('.formgrid-nested-config').val()), readonly: ${(nestedReadonly!false)?c}});
+                }, 0);
+            </#if>
             <#if editableEnabled!false>
                 grid.formGridEditable({columns: JSON.parse(grid.children('.formgrid-editable-columns').val())});
             </#if>
@@ -39,7 +45,7 @@
                 grid.formGridImport({
                     columns: JSON.parse(grid.children('.formgrid-import-columns').val()),
                     sortField: '<#if element.properties.enableSorting! == "true">${element.properties.sortField!?js_string}</#if>',
-                    libraryUrl: '${request.contextPath}/plugin/com.monarch.shadow.lib.FormGridCustom/js/vendor/xlsx.full.min.js?v=${pluginVersion!"2.3.0"}'
+                    libraryUrl: '${request.contextPath}/plugin/com.monarch.shadow.lib.FormGridCustom/js/vendor/xlsx.full.min.js?v=${pluginVersion!"2.9.0"}'
                 });
             </#if>
         });
@@ -55,6 +61,12 @@
     <label field-tooltip="${elementParamName!}" class="label">${element.properties.label!} <span class="form-cell-validator">${decoration}${customDecorator!}</span><#if error??> <span class="form-error-message">${error}</span></#if></label>
     <div class="form-clear"></div>
     <div id="formgrid_${elementParamName!}_${element.properties.elementUniqueKey!}" name="${elementParamName!}" class="grid formgrid formgrid-custom form-element <#if element.properties.readonly! == 'true'>readonly</#if> <#if element.properties.enableSorting! == 'true'>enableSorting</#if> <#if element.properties.disabledAdd! == 'true'>disabledAdd</#if> <#if element.properties.disabledDelete! == 'true'>disabledDelete</#if> <#if element.properties.disabledDuplicate! == 'true'>disabled-duplicate</#if>">
+        <#if nestedEnabled!false>
+            <input type="hidden" disabled="disabled" class="formgrid-nested-config" value="${nestedRelationsJson!?html}">
+        </#if>
+        <input type="hidden" disabled="disabled" class="formgrid-field-id" value="${element.properties.id!?html}">
+        <input type="hidden" disabled="disabled" class="formgrid-form-id" value="${(effectiveFormDefId!element.properties.formDefId!'')?html}">
+        <input type="hidden" disabled="disabled" class="formgrid-sort-field" value="${element.properties.sortField!?html}">
         <input type="hidden" disabled="disabled" id="formUrl" value="${request.contextPath}/web/app/${appId}/${appVersion}/form/embed?_submitButtonLabel=${buttonLabel!?html}">
         <input type="hidden" disabled="disabled" id="json" value="${json!}">
         <input type="hidden" disabled="disabled" id="appId" value="${appId!}">

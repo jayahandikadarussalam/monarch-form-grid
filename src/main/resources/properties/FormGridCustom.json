@@ -104,6 +104,53 @@
     ]
   },
   {
+    "title": "Nested Subgrids",
+    "properties": [
+      {
+        "name": "enableNested",
+        "label": "Enable Nested Subgrids",
+        "description": "Expand rows to display related child grids. Configure each child as a separate Shadow Form Grid in the same form, with its own Form and load/store binders.",
+        "type": "checkbox",
+        "value": "false",
+        "options": [{"value": "true", "label": ""}]
+      },
+      {
+        "name": "nestedChildren",
+        "label": "Child Tables / Subgrids",
+        "description": "Child Grid ID identifies a Shadow Form Grid element in this containing form (for example areasGrid). Child Form ID selects the actual child Form (for example areass / Area), which supplies its table and popup. The referenced grid still supplies Columns and binders; binder formDefId follows this selection when supported. Configure nested actions independently. Leave Parent Grid ID empty for a direct child. Use Form Field IDs without c_.",
+        "type": "grid",
+        "control_field": "enableNested",
+        "control_value": "true",
+        "columns": [
+          {"key": "gridId", "label": "Child Grid ID", "required": "True"},
+          {
+            "key": "formDefId", "label": "Child Form ID", "type": "selectbox", "required": "True",
+            "options_ajax": "[CONTEXT_PATH]/web/json/console/app[APP_PATH]/forms/options"
+          },
+          {"key": "label", "label": "Subgrid Label"},
+          {"key": "parentGridId", "label": "Parent Grid ID"},
+          {"key": "parentKey", "label": "Parent Key Field", "value": "id", "type": "autocomplete", "options": []},
+          {"key": "foreignKey", "label": "Child Foreign Key Field", "required": "True", "type": "autocomplete", "options": []},
+          {
+            "key": "sortWithButtons", "label": "Sort with Buttons", "type": "truefalse",
+            "true_value": "true", "false_value": "false", "value": "false"
+          },
+          {"key": "sortField", "label": "Sort Field", "value": "sort", "type": "autocomplete", "options": []},
+          {
+            "key": "enableDuplicate", "label": "Duplicate", "type": "selectbox", "value": "false",
+            "options": [{"value": "false", "label": "Default"}, {"value": "true", "label": "Pop Up Dialog"}]
+          }
+        ]
+      },
+      {
+        "name": "nestedPropertiesLayout",
+        "type": "custom",
+        "script_url": "[CONTEXT_PATH]/plugin/com.monarch.shadow.lib.FormGridCustom/js/formGridNestedProperties.js?v=2.9.0",
+        "field_options_url": "[CONTEXT_PATH]/web/json/console/app[APP_PATH]/form/columns/options"
+      }
+    ]
+  },
+  {
     "title": "@@form.formgrid.import.settings@@",
     "properties": [
       {

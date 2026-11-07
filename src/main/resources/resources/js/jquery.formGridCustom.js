@@ -129,6 +129,9 @@
             return $(this).each(function() {
                 var row = $(this).closest("tr");
                 var container = $(row).closest("table").parent();
+                methods.showHidePlusIcon(container);
+                if ($(container).hasClass('readonly') || $(container).hasClass('disabledAdd') ||
+                        $(container).children('.formgrid-custom-add').prop('disabled')) return;
 
                 // 1. AMBIL VALUE DARI ID YANG ADA DI FTL
                 var showPopup = $(container).find('.popupDuplicate').val();
@@ -161,18 +164,17 @@
 
                 var resultJson = JSON.stringify(parsed);
 
-                // === LOGIC PENENTU POPUP ===
-                // Buka popup JIKA:
-                // 1. Konfigurasi 'showPopupDuplicate' di FTL bernilai 'true'
-                // 2. ATAU ada uniqueKey (karena user harus edit manual field unik tersebut biar save berhasil)
-                if (showPopup === 'true' || (uniqueKey && uniqueKey !== '')) {
+                // Nested relations choose their own mode. Ordinary grids retain their popup/unique-key settings.
+                var usePopup = args && typeof args.forcePopup === 'boolean' ? args.forcePopup :
+                    showPopup === 'true' || (uniqueKey && uniqueKey !== '');
+                if (usePopup) {
                     // === MODE PAKAI POPUP ===
                     methods.popupForm.call(this,
                         $(container).attr('id'),
                         $(container).find('#formUrl').val(),
                         $(container).find('#json').val(),
                         $(container).find('#nonce').val(),
-                        $(container).attr('id') + "_add", // callback diarahkan ke _add agar masuk sebagai row baru
+                        (args && args.callback) || $(container).attr('id') + "_add",
                         "{}",
                         resultJson,                        // data row lama sebagai pre-filled value
                         $(container).find('#height').val(),
@@ -180,10 +182,10 @@
                     );
                 } else {
                     // === MODE LANGSUNG DUPLIKAT (TANPA POPUP) ===
-                    var args = { result: resultJson };
+                    var duplicateArgs = { result: resultJson };
 
                     // Cek duplikat di client side dulu
-                    if (!methods.checkDuplicate(container, args)) {
+                    if (!methods.checkDuplicate(container, duplicateArgs)) {
                         return;
                     }
 
@@ -349,6 +351,7 @@
                     })
                 }
             }
+            if (!okToInsert) $(container).triggerHandler('formgrid:validationerror');
             return okToInsert;
         },
 
@@ -366,6 +369,10 @@
             var table = $(row).closest("table");
             var container = $(table).parent();
             var deleteMessage = $(container).find('#deleteMessage').val();
+
+            var beforeDelete = $.Event('formgrid:beforedelete');
+            container.triggerHandler(beforeDelete, [row]);
+            if (beforeDelete.isDefaultPrevented()) return;
 
             if (deleteMessage == "") {
                 deleteMessage = messages['form.formgrid.deleteMessage.value'];
@@ -424,19 +431,21 @@
             });
         },
 
+        createAction: function(className, icon, label, handler) {
+            return $('<button type="button" class="btn-icon grid-row-action"></button>')
+                .addClass(className)
+                .attr({title: label, "aria-label": label})
+                .append($('<i aria-hidden="true"></i>').addClass("fas " + icon))
+                .on("click.formGridCustom", function() {
+                    if (!this.disabled) {
+                        handler.call(this);
+                    }
+                });
+        },
+
         decorateRow: function(row) {
-            // Keep the same hit areas and spacing as the Monarch repeater toolbar.
-            function action(className, icon, label, handler) {
-                return $('<button type="button" class="btn-icon grid-row-action"></button>')
-                    .addClass(className)
-                    .attr({title: label, "aria-label": label})
-                    .append($('<i aria-hidden="true"></i>').addClass("fas " + icon))
-                    .on("click.formGridCustom", function() {
-                        if (!this.disabled) {
-                            handler.call(this);
-                        }
-                    });
-            }
+            // The same action factory is used by nested subgrids.
+            var action = methods.createAction;
 
             var reorder = $('<div class="grid-reorder-buttons"></div>')
                 .append(action("grid-action-moveup", "fa-arrow-up", messages['form.formgrid.moveUp'], methods.moveRowUp))
@@ -841,6 +850,7 @@
     };
 
     $.formGridCustom = {
+        createAction: methods.createAction,
         fillValue: methods.fillValue,
         updateRowIndex: methods.updateRowIndex,
         disabledMoveAction: methods.disabledMoveAction,

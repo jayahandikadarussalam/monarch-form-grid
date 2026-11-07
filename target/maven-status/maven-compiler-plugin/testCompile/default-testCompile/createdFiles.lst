@@ -1,4 +1,7 @@
 com/monarch/shadow/lib/FormGridEditableTest$Grid.class
-com/monarch/shadow/lib/FormGridEditableTest.class
+com/monarch/shadow/lib/FormGridNestedTest$Grid.class
 com/monarch/shadow/lib/FormGridImportTemplateTest$Request.class
+com/monarch/shadow/lib/FormGridNestedTest.class
+com/monarch/shadow/lib/FormGridNestedTest$1.class
+com/monarch/shadow/lib/FormGridEditableTest.class
 com/monarch/shadow/lib/FormGridImportTemplateTest.class

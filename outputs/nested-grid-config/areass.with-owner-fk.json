@@ -1,0 +1,115 @@
+{
+    "className": "org.joget.apps.form.model.Form",
+    "properties": {
+        "id": "areass",
+        "name": "Area",
+        "tableName": "j_sc_grid2_area",
+        "loadBinder": {
+            "className": "org.joget.apps.form.lib.WorkflowFormBinder"
+        },
+        "storeBinder": {
+            "className": "org.joget.apps.form.lib.WorkflowFormBinder"
+        },
+        "description": ""
+    },
+    "elements": [
+        {
+            "className": "org.joget.apps.form.model.Section",
+            "properties": {
+                "label": "Areas",
+                "id": "areas",
+                "readonly": "",
+                "readonlyLabel": "",
+                "loadBinder": {
+                    "className": "",
+                    "properties": {}
+                },
+                "storeBinder": {
+                    "className": "",
+                    "properties": {}
+                },
+                "permission": {
+                    "className": "",
+                    "properties": {}
+                },
+                "permissionReadonly": "",
+                "sectionCollapsible": "none",
+                "comment": ""
+            },
+            "elements": [
+                {
+                    "className": "org.joget.apps.form.model.Column",
+                    "properties": {
+                        "width": "100%"
+                    },
+                    "elements": [
+                        {
+                            "className": "id.co.itasoft.monarch.plugin.MonarchTextField",
+                            "properties": {
+                                "useDefaultWhenEmpty": "",
+                                "lettercase": "",
+                                "encryption": "",
+                                "readonly": "",
+                                "style": "",
+                                "symbols": "",
+                                "readonlyLabel": "",
+                                "hiddenField": "",
+                                "value": "",
+                                "maxlength": "",
+                                "validator": {
+                                    "className": "",
+                                    "properties": {}
+                                },
+                                "placeholder": "",
+                                "size": "",
+                                "workflowVariable": "",
+                                "id": "parentid",
+                                "label": "parentId"
+                            }
+                        },
+                        {
+                            "className": "id.co.itasoft.monarch.plugin.MonarchTextField",
+                            "properties": {
+                                "useDefaultWhenEmpty": "",
+                                "lettercase": "",
+                                "encryption": "",
+                                "readonly": "",
+                                "style": "",
+                                "symbols": "",
+                                "readonlyLabel": "",
+                                "hiddenField": "",
+                                "value": "",
+                                "maxlength": "",
+                                "validator": {
+                                    "className": "",
+                                    "properties": {}
+                                },
+                                "placeholder": "",
+                                "size": "",
+                                "workflowVariable": "",
+                                "id": "name",
+                                "label": "Name"
+                            }
+                        },
+                        {
+                            "className": "org.joget.apps.form.lib.HiddenField",
+                            "properties": {
+                                "id": "fk",
+                                "label": "Containing Record ID",
+                                "value": ""
+                            }
+                        },
+                        {
+                            "className": "org.joget.apps.form.lib.HiddenField",
+                            "properties": {
+                                "id": "sort",
+                                "label": "Sort Order",
+                                "value": ""
+                            }
+                        }
+                    ]
+                }
+            ]
+        }
+    ]
+}

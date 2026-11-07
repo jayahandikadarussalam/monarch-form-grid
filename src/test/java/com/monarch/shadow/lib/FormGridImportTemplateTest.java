@@ -29,12 +29,17 @@ public class FormGridImportTemplateTest {
     }
 
     private String render(boolean enabled, boolean readonly, String previewPageSize, boolean editable) throws Exception {
+        return render(enabled, readonly, previewPageSize, editable, false);
+    }
+
+    private String render(boolean enabled, boolean readonly, String previewPageSize, boolean editable, boolean nested) throws Exception {
         Configuration config = new Configuration();
         config.setTemplateExceptionHandler(TemplateExceptionHandler.RETHROW_HANDLER);
         Template template = new Template("FormGridCustom.ftl", new InputStreamReader(
                 getClass().getResourceAsStream("/templates/FormGridCustom.ftl"), StandardCharsets.UTF_8), config);
         Map<String, Object> props = new HashMap<>();
         props.put("elementUniqueKey", "test");
+        props.put("id", "items");
         props.put("label", "Example Grid");
         props.put("readonly", readonly ? "true" : "");
         props.put("enableSorting", "true");
@@ -46,18 +51,36 @@ public class FormGridImportTemplateTest {
         model.put("elementParamName", "items");
         model.put("appId", "testApp");
         model.put("appVersion", 1);
+        model.put("effectiveFormDefId", "areass");
         model.put("decoration", "");
         model.put("headers", Collections.emptyMap());
         model.put("rows", Collections.emptyList());
         model.put("optionsJson", "{}");
         model.put("importEnabled", enabled);
         model.put("editableEnabled", editable);
+        model.put("nestedEnabled", nested);
+        model.put("nestedReadonly", readonly);
+        model.put("nestedRelationsJson", "[{\"gridId\":\"areas\",\"label\":\"Areas <script> & \\\"quoted\\\"\",\"foreignKey\":\"plantId\"}]");
         model.put("editableColumnsJson", "[{\"id\":\"name\",\"label\":\"Name & <Label>\",\"editor\":\"TextField\"}]");
         model.put("importLabels", new FormGridCustom().getImportLabels());
         model.put("importColumnsJson", "[{\"id\":\"name\",\"label\":\"Name & <Label>\",\"type\":\"text\"}]");
         StringWriter out = new StringWriter();
         template.process(model, out);
         return out.toString();
+    }
+
+    @Test
+    public void nestedConfigurationIsOptInEscapedAndReceivesReadonlyState() throws Exception {
+        String html = render(false, true, null, false, true);
+        assertTrue(html.contains("grid.formGridNested({relations: JSON.parse("));
+        assertTrue(html.contains("readonly: true"));
+        assertTrue(html.contains("class=\"formgrid-nested-config\""));
+        assertTrue(html.contains("Areas &lt;script&gt; &amp;"));
+        assertTrue(html.contains("class=\"formgrid-field-id\" value=\"items\""));
+        assertTrue(html.contains("class=\"formgrid-form-id\" value=\"areass\""));
+        String plain = render(false, false);
+        assertFalse(plain.contains("grid.formGridNested({"));
+        assertFalse(plain.contains("class=\"formgrid-nested-config\""));
     }
 
     @Test
@@ -68,7 +91,7 @@ public class FormGridImportTemplateTest {
         assertTrue(html.contains("Name &amp; &lt;Label&gt;"));
         assertTrue(html.contains("accept=\".xlsx,.xls,.csv\""));
         assertTrue(html.contains("formgrid-import-confirm\" disabled"));
-        assertTrue(html.contains("vendor/xlsx.full.min.js?v=2.3.0"));
+        assertTrue(html.contains("vendor/xlsx.full.min.js?v=2.9.0"));
         assertTrue(html.contains("Download Excel Template"));
         assertFalse(html.contains("previewPageSize:"));
         assertTrue(html.contains("class=\"formgrid-import-pagination\""));

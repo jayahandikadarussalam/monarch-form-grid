@@ -148,3 +148,8 @@ $('#employeeGrid').hideRowsByCondition(function(data) {
         2. *Checkbox* pada baris HR dan Finance berubah menjadi `disabled: true` agar tidak bisa tercentang tak sengaja oleh *Check All*.
         3. Baris IT tetap terlihat (mendapat kelas `.pg-tr-show`).
         4. Nomor halaman (*paging*) ditata ulang menyesuaikan jumlah baris IT yang tersisa.
+
+
+## Nested Subgrids
+
+Version 2.9.0 supports dynamic nested parent/child grids. See [Nested Grid setup and foreign keys](docs/NESTED_GRID.md) for the Plant → Area → Equipment Group → Equipment Type → Tags → Parameter example and binder configuration.

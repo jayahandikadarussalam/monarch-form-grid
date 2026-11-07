@@ -41,7 +41,7 @@ import java.util.*;
 
 public class FormGridCustom extends Element implements FormBuilderPaletteElement, FormContainer, GridInnerDataRetriever, PwaOfflineResources, PwaOfflineReadonly {
     private static final String MESSAGE_PATH = "messages/FormGridCustom";
-    private static final String VERSION = "2.3.0";
+    private static final String VERSION = "2.9.0";
 
     protected Map<FormData, FormRowSet> cachedRowSet = new HashMap<>();
     protected Map<String, FormData> formDatas = new HashMap<>();
@@ -51,6 +51,7 @@ public class FormGridCustom extends Element implements FormBuilderPaletteElement
     protected Map<String, Map<String, String>> optionsMap;
 
     protected Form form;
+    protected String loadedFormDefId;
     protected FormData formData;
     protected String formDefKeys;
 
@@ -60,6 +61,7 @@ public class FormGridCustom extends Element implements FormBuilderPaletteElement
     public String renderTemplate(FormData formData, Map dataModel) {
         this.formData = formData;
         dataModel.put("pluginVersion", getVersion());
+        dataModel.put("effectiveFormDefId", getEffectiveFormDefId());
 
         // Template Form Grid
         String template = "FormGridCustom.ftl";
@@ -72,6 +74,10 @@ public class FormGridCustom extends Element implements FormBuilderPaletteElement
 
         String optionsJson = this.getOptionsJson(headers, formData);
         dataModel.put("optionsJson", optionsJson);
+        boolean nested = "true".equals(getPropertyString("enableNested"));
+        dataModel.put("nestedEnabled", nested);
+        dataModel.put("nestedReadonly", FormUtil.isReadonly(this, formData));
+        if (nested) dataModel.put("nestedRelationsJson", getNestedRelationsJson());
 
         dataModel.put("rows", getRows(formData));
 
@@ -236,7 +242,7 @@ public class FormGridCustom extends Element implements FormBuilderPaletteElement
             column.put("maxlength", field.getPropertyString("maxlength"));
             if (Arrays.asList("SelectBox", "Radio", "CheckBox").contains(type)) {
                 if (this.optionsMap == null) this.optionsMap = new HashMap<>();
-                column.put("options", getFormOptions(getPropertyString("formDefId"), id, true, data));
+                column.put("options", getFormOptions(getEffectiveFormDefId(), id, true, data));
             }
             if ("DatePicker".equals(type)) {
                 String pickerType = field.getPropertyString("datePickerType");
@@ -655,7 +661,190 @@ public class FormGridCustom extends Element implements FormBuilderPaletteElement
         if ("true".equals(getPropertyString("editable")) && !FormUtil.isReadonly(this, formData)) {
             valid = validateEditableRows(rowSet, formData) && valid;
         }
+        if ("true".equals(getPropertyString("enableNested")) && !FormUtil.isReadonly(this, formData)) {
+            valid = validateNestedRows(formData) && valid;
+        }
         return valid;
+    }
+
+    protected String getNestedRelationsJson() {
+        JSONArray result = new JSONArray();
+        Object configured = getProperty("nestedChildren");
+        if (configured instanceof Object[]) {
+            for (Object item : (Object[]) configured) {
+                if (!(item instanceof Map)) continue;
+                Map<?, ?> values = (Map<?, ?>) item;
+                JSONObject relation = new JSONObject();
+                for (String key : Arrays.asList("gridId", "formDefId", "label", "parentGridId", "parentKey", "foreignKey", "sortWithButtons", "sortField", "enableDuplicate")) {
+                    Object value = values.get(key);
+                    String setting = value == null ? "" : value.toString().trim();
+                    if (setting.isEmpty()) {
+                        if ("sortWithButtons".equals(key)) setting = "false";
+                        else if ("enableDuplicate".equals(key)) setting = "false";
+                        else if ("sortField".equals(key)) setting = "sort";
+                    }
+                    relation.put(key, setting);
+                }
+                result.put(relation);
+            }
+        }
+        return result.toString();
+    }
+
+    protected JSONObject getNestedRelation() {
+        Element scope = getParent();
+        while (scope != null && !(scope instanceof Form)) scope = scope.getParent();
+        if (scope != null) {
+            Deque<Element> pending = new ArrayDeque<>();
+            pending.add(scope);
+            while (!pending.isEmpty()) {
+                Element candidate = pending.removeFirst();
+                if (candidate instanceof FormGridCustom && candidate != this &&
+                        "true".equals(candidate.getPropertyString("enableNested"))) {
+                    JSONArray relations = new JSONArray(((FormGridCustom) candidate).getNestedRelationsJson());
+                    for (int i = 0; i < relations.length(); i++) {
+                        JSONObject relation = relations.getJSONObject(i);
+                        if (getPropertyString("id").equals(relation.getString("gridId"))) return relation;
+                    }
+                }
+                if (candidate != scope && candidate instanceof Form) continue;
+                if (candidate.getChildren() != null) pending.addAll(candidate.getChildren());
+            }
+        }
+        return null;
+    }
+
+    protected String getEffectiveSortField() {
+        JSONObject relation = getNestedRelation();
+        if (relation != null && "true".equals(relation.getString("sortWithButtons"))) {
+            String field = relation.getString("sortField");
+            if (field.matches("[a-zA-Z0-9_]+") && !"id".equals(field) && !relation.getString("foreignKey").equals(field)) return field;
+        }
+        return "true".equalsIgnoreCase(getPropertyString("enableSorting")) ? getPropertyString("sortField") : "";
+    }
+
+    protected String getEffectiveFormDefId() {
+        JSONObject relation = getNestedRelation();
+        if (relation != null && !relation.getString("formDefId").isEmpty()) return relation.getString("formDefId");
+        String id = getPropertyString("formDefId");
+        if (id.isEmpty() && getStoreBinder() instanceof FormBinder) id = ((FormBinder) getStoreBinder()).getPropertyString("formDefId");
+        if (id.isEmpty() && getLoadBinder() instanceof FormBinder) id = ((FormBinder) getLoadBinder()).getPropertyString("formDefId");
+        return id;
+    }
+
+    protected <T> T configureNestedFormBinder(T binder) {
+        JSONObject relation = getNestedRelation();
+        if (relation != null && !relation.getString("formDefId").isEmpty() && binder instanceof FormBinder) {
+            FormBinder formBinder = (FormBinder) binder;
+            if (formBinder.getProperties() != null && formBinder.getProperties().containsKey("formDefId"))
+                formBinder.setProperty("formDefId", relation.getString("formDefId"));
+        }
+        return binder;
+    }
+
+    @Override
+    public FormLoadBinder getLoadBinder() { return configureNestedFormBinder(super.getLoadBinder()); }
+
+    @Override
+    public FormStoreBinder getStoreBinder() { return configureNestedFormBinder(super.getStoreBinder()); }
+
+    protected boolean nestedFormExists(String id) {
+        AppDefinition app = AppUtil.getCurrentAppDefinition();
+        if (app == null) return false;
+        FormDefinitionDao dao = (FormDefinitionDao) AppUtil.getApplicationContext().getBean("formDefinitionDao");
+        return dao.loadById(id, app) != null;
+    }
+
+    protected FormGridCustom findNestedGrid(String id, FormData data) {
+        Element element = FormUtil.findElement(id, FormUtil.findRootForm(this), data);
+        return element instanceof FormGridCustom ? (FormGridCustom) element : null;
+    }
+
+    protected boolean hasNestedField(String id, FormData data) {
+        Form inner = getForm();
+        return inner != null && FormUtil.findElement(id, inner, data) != null;
+    }
+
+    // Validate the submitted relation graph and foreign keys before Joget runs store binders.
+    // No table names or SQL from the browser are used; each grid retains its own binders.
+    protected boolean validateNestedRows(FormData data) {
+        String parameter = FormUtil.getElementParameterName(this);
+        try {
+            String rootId = getPropertyString("id");
+            JSONArray relations = new JSONArray(getNestedRelationsJson());
+            if (relations.length() == 0) throw new IllegalArgumentException("Add at least one child grid in Child Tables / Subgrids.");
+            Map<String, JSONObject> configs = new LinkedHashMap<>();
+            Map<String, FormGridCustom> grids = new HashMap<>();
+            grids.put(rootId, this);
+            for (int i = 0; i < relations.length(); i++) {
+                JSONObject relation = relations.getJSONObject(i);
+                String childId = relation.getString("gridId");
+                if (relation.getString("parentGridId").isEmpty()) relation.put("parentGridId", rootId);
+                if (relation.getString("parentKey").isEmpty()) relation.put("parentKey", "id");
+                for (String field : Arrays.asList("gridId", "parentGridId", "parentKey", "foreignKey")) {
+                    if (!relation.getString(field).matches("[a-zA-Z0-9_]+"))
+                        throw new IllegalArgumentException("Invalid " + field + " in nested subgrid configuration.");
+                }
+                if (grids.containsKey(childId)) throw new IllegalArgumentException("Duplicate or self-referencing child grid: " + childId);
+                FormGridCustom child = findNestedGrid(childId, data);
+                if (child == null) throw new IllegalArgumentException("Child Grid ID must identify a Shadow Form Grid in the same form: " + childId);
+                String childFormId = relation.getString("formDefId");
+                if (!childFormId.isEmpty() && !nestedFormExists(childFormId))
+                    throw new IllegalArgumentException(childId + ": Child Form ID not found in the current app: " + childFormId);
+                if ("true".equals(child.getPropertyString("enableNested")))
+                    throw new IllegalArgumentException("Configure nesting only on the root grid: " + childId);
+                for (String setting : Arrays.asList("sortWithButtons", "enableDuplicate")) {
+                    if (!Arrays.asList("true", "false").contains(relation.getString(setting)))
+                        throw new IllegalArgumentException("Invalid " + setting + " for child grid: " + childId);
+                }
+                if ("true".equals(relation.getString("sortWithButtons")) &&
+                        (!relation.getString("sortField").matches("[a-zA-Z0-9_]+") || "id".equals(relation.getString("sortField"))
+                        || relation.getString("foreignKey").equals(relation.getString("sortField"))
+                        || !child.hasNestedField(relation.getString("sortField"), data)))
+                    throw new IllegalArgumentException(childId + ": Nested Sort Field must identify a field in its child Form: " + relation.getString("sortField"));
+                configs.put(childId, relation);
+                grids.put(childId, child);
+            }
+            for (String childId : configs.keySet()) {
+                Set<String> visited = new HashSet<>();
+                String current = childId;
+                while (!rootId.equals(current)) {
+                    if (!visited.add(current)) throw new IllegalArgumentException("Circular nested grid relationship: " + childId);
+                    JSONObject relation = configs.get(current);
+                    if (relation == null) throw new IllegalArgumentException("Unknown Parent Grid ID: " + current);
+                    current = relation.getString("parentGridId");
+                }
+            }
+            for (Map.Entry<String, JSONObject> entry : configs.entrySet()) {
+                JSONObject relation = entry.getValue();
+                String parentId = relation.getString("parentGridId");
+                String parentKey = relation.getString("parentKey");
+                String foreignKey = relation.getString("foreignKey");
+                if (!"id".equals(parentKey) && !grids.get(parentId).hasNestedField(parentKey, data))
+                    throw new IllegalArgumentException(parentId + ": Parent Key Field not found in its Form: " + parentKey);
+                if ("id".equals(foreignKey) || !grids.get(entry.getKey()).hasNestedField(foreignKey, data))
+                    throw new IllegalArgumentException(entry.getKey() + ": Child Foreign Key Field must identify a field in its Form: " + foreignKey);
+                Set<String> parentValues = new HashSet<>();
+                FormRowSet parents = grids.get(parentId).getRows(data);
+                if (parents != null) for (FormRow row : parents) {
+                    String value = row.getProperty(parentKey);
+                    if (value == null || value.isEmpty() || !parentValues.add(value))
+                        throw new IllegalArgumentException(parentId + ": Parent Key Field \"" + parentKey + "\" must be non-empty and unique.");
+                }
+                FormRowSet children = grids.get(entry.getKey()).getRows(data);
+                int index = 0;
+                if (children != null) for (FormRow row : children) {
+                    index++;
+                    String value = row.getProperty(foreignKey);
+                    if (value == null || value.isEmpty() || !parentValues.contains(value))
+                        throw new IllegalArgumentException(entry.getKey() + ", row " + index + ": Foreign key \"" + foreignKey + "\" has no matching parent.");
+                }
+            }
+            return true;
+        } catch (IllegalArgumentException | JSONException ex) {
+            data.addFormError(parameter, ex.getMessage());
+            return false;
+        }
     }
 
     protected boolean validateEditableRows(FormRowSet rows, FormData parentData) {
@@ -1047,8 +1236,8 @@ public class FormGridCustom extends Element implements FormBuilderPaletteElement
                         }
                     }
 
-                    if (rowSet != null && this.getPropertyString("enableSorting") != null && this.getPropertyString("enableSorting").equals("true") && this.getPropertyString("sortField") != null && !this.getPropertyString("sortField").isEmpty()) {
-                        final String sortField = this.getPropertyString("sortField");
+                    final String sortField = getEffectiveSortField();
+                    if (rowSet != null && !sortField.isEmpty()) {
 
                         rowSet.sort((row1, row2) -> {
                             String number1 = row1.getProperty(sortField);
@@ -1126,9 +1315,8 @@ public class FormGridCustom extends Element implements FormBuilderPaletteElement
         rowSet.setMultiRow(true);
 
         int index = 0;
-        String enableSorting = getPropertyString("enableSorting");
-        String sortField = getPropertyString("sortField");
-        boolean isSortingEnabled = "true".equalsIgnoreCase(enableSorting) && sortField != null && !sortField.isEmpty();
+        String sortField = getEffectiveSortField();
+        boolean isSortingEnabled = !sortField.isEmpty();
 
         for (FormRow row : oriRowSet) {
             String jsonRow = row.getProperty("jsonrow");
@@ -1242,17 +1430,16 @@ public class FormGridCustom extends Element implements FormBuilderPaletteElement
     }
 
     protected Form getForm() {
+        String formDefId = getEffectiveFormDefId();
+        if (form != null && loadedFormDefId != null && !loadedFormDefId.equals(formDefId)) {
+            form = null;
+            formDefKeys = null;
+            headerMap = null;
+            optionsMap = null;
+            optionFormsJson.clear();
+        }
         if (this.form == null) {
-            String formDefId = getPropertyString("formDefId");
-
-            if (formDefId.isEmpty()) {
-                if (getStoreBinder() instanceof FormBinder) {
-                    formDefId = ((FormBinder) getStoreBinder()).getPropertyString("formDefId");
-                }
-                if (formDefId.isEmpty() && getLoadBinder() instanceof FormBinder) {
-                    formDefId = ((FormBinder) getLoadBinder()).getPropertyString("formDefId");
-                }
-            }
+            loadedFormDefId = formDefId;
 
             if (!formDefId.isEmpty()) {
                 AppDefinition appDef = AppUtil.getCurrentAppDefinition();
@@ -1456,6 +1643,7 @@ public class FormGridCustom extends Element implements FormBuilderPaletteElement
         urls.add(contextPath + "/plugin/com.monarch.shadow.lib.FormGridCustom/js/jquery.gridPagingCustom.js?v=" + getVersion());
         urls.add(contextPath + "/plugin/com.monarch.shadow.lib.FormGridCustom/js/jquery.formGridCustom.remake.js?v=" + getVersion());
         urls.add(contextPath + "/plugin/com.monarch.shadow.lib.FormGridCustom/js/jquery.formGridEditable.js?v=" + getVersion());
+        urls.add(contextPath + "/plugin/com.monarch.shadow.lib.FormGridCustom/js/jquery.formGridNested.js?v=" + getVersion());
         urls.add(contextPath + "/plugin/com.monarch.shadow.lib.FormGridCustom/js/jquery.utils.js?v=" + getVersion());
         urls.add(contextPath + "/plugin/com.monarch.shadow.lib.FormGridCustom/js/formGridImport.js?v=" + getVersion());
         urls.add(contextPath + "/plugin/com.monarch.shadow.lib.FormGridCustom/js/jquery.formGridImport.js?v=" + getVersion());

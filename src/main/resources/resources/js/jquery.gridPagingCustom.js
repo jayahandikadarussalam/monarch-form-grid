@@ -87,6 +87,7 @@
                 methods.refresh.call(thisObj);
 
                 $(thisObj).formGridCustom("refreshIndex");
+                thisObj.triggerHandler('formgrid:sorted');
             });
         },
 
@@ -180,6 +181,7 @@
 
 
             $(thisObj).find(".pg-navigator .pg-normal[rel="+page+"]").addClass("pg-current");
+            thisObj.triggerHandler('formgrid:pagechanged');
         }
     };
 

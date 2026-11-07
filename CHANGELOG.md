@@ -1,5 +1,70 @@
 # Changelog
 
+## [2.9.0] - 2026-11-07
+
+### Diubah
+- Sort Field hanya tampil jika Sort with Buttons dicentang pada baris nested yang sama; nilai field tetap tersimpan saat disembunyikan.
+- Duplicate nested menggunakan dropdown dua pilihan: Default untuk langsung menyalin baris, dan Pop Up Dialog untuk membuka Form dahulu. Default konfigurasi baru adalah Default.
+- Pilihan mode nested mengesampingkan setting popup child grid; readonly, Disable Add, batas baris, ID baru, serta FK tetap dipertahankan.
+- Urutan CSV dan key konfigurasi dipertahankan: `enableDuplicate=false` berarti Default dan `true` berarti Pop Up Dialog.
+
+## [2.8.0] - 2026-11-07
+
+### Ditambahkan
+- Autocomplete native Joget untuk Child Foreign Key Field dan Sort Field mengikuti Child Form ID pada tiap baris nested; Parent Key Field mengikuti Form parent yang dipilih.
+- Saran field memakai endpoint kolom Form Joget, memperbarui sumber saat Form berubah, dan mengabaikan respons lama tanpa menghapus nilai yang diketik.
+- Kolom No. pada nested tampil saat Sort with Buttons aktif atau Show Row Number pada source child aktif. Nomor dimulai dari 1 per parent dan mengikuti Add/Delete/Move.
+
+## [2.7.2] - 2026-11-07
+
+### Diperbaiki
+- Ukuran dan margin paksa pada checkbox nested dihapus agar centang mengikuti styling native Joget tanpa lapisan biru tambahan.
+- Border konfigurasi nested memakai abu-abu netral; layout dua baris dipertahankan.
+
+## [2.7.1] - 2026-11-07
+
+### Diubah
+- **Sort with Buttons** dan **Duplicate** pada Nested Subgrids memakai checkbox native Joget, dengan nilai tersimpan tetap string `true`/`false`.
+- Konfigurasi tiap child ditata menjadi dua baris berlabel agar input lebih lebar; panel sempit menyesuaikan jumlah kolom.
+- Dropdown Form, required fields, CSV, dan kontrol Add/Move/Delete tetap menggunakan grid properties native.
+
+## [2.7.0] - 2026-11-07
+
+### Ditambahkan
+- Dropdown **Child Form ID** langsung di samping Child Grid ID pada konfigurasi nested, menggunakan daftar Form aplikasi aktif.
+- Form popup, metadata field, dan validasi child memakai Child Form ID yang dipilih. Binder yang menyediakan properti `formDefId` diselaraskan sebelum load/store.
+- Validasi Form ID yang tidak ditemukan serta pesan untuk mapping browser yang belum dimuat ulang.
+- Contoh JSON/CSV Area dan dokumentasi yang membedakan ID grid, ID Form, serta field FK. Mapping lama tanpa Child Form ID tetap memakai Form child grid.
+
+## [2.6.0] - 2026-11-07
+
+### Diubah
+- Nested memiliki properti mandiri **Duplicate** dan **Sort with Buttons**, masing-masing Enabled/Disabled tanpa opsi mengikuti child grid.
+- **Sort Field** ditentukan di relasi nested; penyimpanan dan pemuatan urutan mengikuti field ini tanpa mengaktifkan sorting pada child grid.
+- Duplikasi nested selalu membuka Form popup dahulu, termasuk saat Show Popup on Duplicate child grid nonaktif. Baris baru ditambahkan setelah popup disubmit; Cancel tidak menambah data.
+- Default nested: Sort with Buttons Disabled, Duplicate Enabled, Sort Field `sort`.
+
+## [2.5.0] - 2026-11-07
+
+### Ditambahkan
+- Toolbar nested memakai ikon, ukuran, warna, dan jarak yang sama dengan grid utama: naik/turun, edit, duplikat, dan hapus.
+- Pilihan **Sort with Buttons** dan **Duplicate** per relasi child: mengikuti child grid, Enabled, atau Disabled.
+- Pengurutan dibatasi pada sibling dengan parent yang sama dan disimpan melalui Sort Field child grid.
+- Duplikat child memakai ID baru, mempertahankan FK, mendukung popup duplicate, dan mematuhi readonly/Disable Add/batas baris.
+
+### Diperbaiki
+- Setting toolbar grid utama tidak lagi menyembunyikan tombol nested milik child secara tidak sengaja.
+- Duplikat grid utama juga mematuhi readonly/Disable Add/batas baris.
+
+## [2.4.0] - 2026-11-07
+
+### Ditambahkan
+- Pengaturan berbahasa Inggris **Nested Subgrids**, **Enable Nested Subgrids**, dan **Child Tables / Subgrids**.
+- Relasi dinamis Child Grid ID, Parent Grid ID, Parent Key Field, dan Child Foreign Key Field, termasuk cabang dan level tambahan tanpa rebuild plugin.
+- Expand/collapse subgrid, Add dengan FK otomatis, serta Edit/Delete melalui Form dan binder child grid yang sudah dikonfigurasi.
+- Validasi graph dan FK di browser serta server; penghapusan parent yang masih memiliki child ditahan.
+- Dokumentasi konfigurasi table/Form/binder dan contoh Plant → Area → Equipment Group → Equipment Type → Tags → Parameter di `docs/NESTED_GRID.md`.
+
 ## [2.3.0] - 2026-11-06
 
 ### Ditambahkan
