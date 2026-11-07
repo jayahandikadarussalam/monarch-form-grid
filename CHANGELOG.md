@@ -1,5 +1,20 @@
 # Changelog
 
+## [2.12.2] - 2026-11-07
+
+### Diubah
+- Pilihan jumlah baris preview import dibatasi menjadi 10, 20, 50, dan 100.
+- Dropdown pagination nested menyediakan ruang khusus di kanan untuk panah agar tidak menimpa angka, termasuk nilai 100.
+
+## [2.12.1] - 2026-11-07
+
+### Ditambahkan
+- Pagination otomatis di bawah setiap nested table, terpisah per parent dan level, dengan pilihan jumlah baris serta tombol halaman pertama/sebelumnya/berikutnya/terakhir.
+- Hanya baris halaman aktif beserta descendant yang dibuka yang dirender. Seluruh data tetap disertakan saat validasi dan submit.
+
+### Diperbaiki
+- Versi plugin dan URL aset dinaikkan agar browser mengambil JavaScript dan CSS pagination terbaru setelah upgrade.
+
 ## [2.12.0] - 2026-11-07
 
 ### Ditambahkan

@@ -276,3 +276,28 @@
 .formgrid-nested-empty { color: #64748b; text-align: center; }
 .formgrid-custom .formgrid-nested-row-number { width: 1%; white-space: nowrap; text-align: center; }
 .formgrid-nested-status:not([hidden]) { margin: 0 0 12px; }
+.formgrid-nested-pagination { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 8px 16px; margin-top: 10px; font-size: 13px; }
+.formgrid-nested-pagination[hidden] { display: none; }
+.formgrid-nested-page-size-label, .formgrid-nested-page-actions { display: flex; align-items: center; gap: 8px; }
+.formgrid-custom .formgrid-nested-pagination select.formgrid-nested-page-size {
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    box-sizing: border-box;
+    flex: 0 0 auto;
+    width: auto;
+    min-width: 80px;
+    margin: 0;
+    padding: 4px 32px 4px 10px;
+    border: 1px solid #cbd5e1;
+    border-radius: 4px;
+    color: #334155;
+    font: inherit;
+    line-height: 1.5;
+    background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%2364748b' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat right 10px center;
+    background-size: 12px 8px;
+}
+.formgrid-custom .formgrid-nested-page-actions button { min-width: 30px; min-height: 30px; margin: 0; padding: 2px 8px; border: 1px solid #cbd5e1; border-radius: 4px; background: #fff; color: #334155; cursor: pointer; font-size: 18px; line-height: 1; }
+.formgrid-custom .formgrid-nested-page-actions button:hover:not(:disabled) { background: #eff6ff; }
+.formgrid-custom .formgrid-nested-page-actions button:focus-visible, .formgrid-custom .formgrid-nested-page-size:focus-visible { outline: 2px solid #2563eb; outline-offset: 2px; }
+.formgrid-custom .formgrid-nested-page-actions button:disabled { opacity: 0.45; cursor: default; }

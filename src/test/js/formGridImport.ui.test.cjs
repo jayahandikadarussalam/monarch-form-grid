@@ -30,7 +30,7 @@ function fixture(id = 'gridA', name = 'items') {
             <label class="formgrid-import-sheet-label" hidden><select class="formgrid-import-sheet"></select></label>
             <p class="formgrid-import-status"></p><div class="formgrid-import-preview"></div>
             <div class="formgrid-import-pagination" hidden>
-                <select class="formgrid-import-page-size">${[10,20,30,40,50,60,70,80,90,100].map(n=>`<option value="${n}">${n}</option>`).join('')}</select>
+                <select class="formgrid-import-page-size">${[10,20,50,100].map(n=>`<option value="${n}">${n}</option>`).join('')}</select>
                 <span class="formgrid-import-page-info"></span>
                 <button type="button" class="formgrid-import-previous" disabled>Previous</button>
                 <button type="button" class="formgrid-import-next" disabled>Next</button>
@@ -209,7 +209,7 @@ test('template download preserves each grid column order without entering uservi
     assert.equal(dataRows(other).length,0);
 });
 
-test('preview defaults to 10, allows 10-100 rows and imports the whole batch', async t => {
+test('preview defaults to 10, allows 10/20/50/100 rows and imports the whole batch', async t => {
     const {grid,other,dom} = setup();
     t.after(()=>dom.window.close());
     grid.children('#validateMaxRow').val('200');
@@ -225,7 +225,7 @@ test('preview defaults to 10, allows 10-100 rows and imports the whole batch', a
     assert.equal(grid.find('.formgrid-import-preview tbody tr').first().children().eq(1).text(),'Person 11');
     grid.find('.formgrid-import-previous').trigger('click');
     assert.equal(grid.find('.formgrid-import-preview tbody tr').first().children().eq(1).text(),'Person 1');
-    for (const size of [10,20,30,40,50,60,70,80,90,100]) {
+    for (const size of [10,20,50,100]) {
         grid.find('.formgrid-import-page-size').val(String(size)).trigger('change');
         assert.equal(grid.find('.formgrid-import-preview tbody tr').length,size);
         assert.match(grid.find('.formgrid-import-page-info').text(),new RegExp('Showing 1–'+size+' of 105'));

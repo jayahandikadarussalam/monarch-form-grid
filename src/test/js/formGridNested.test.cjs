@@ -198,6 +198,105 @@ function sortableSeed({grid,add}) {
 function sectionRows(s,parent=s.first) {
     return parent.next().find('[data-child-grid="areas"] > .formgrid-nested-scroll > table > tbody > tr.formgrid-nested-row');
 }
+function nestedPager(s,parent=s.first,id='areas') {
+    return parent.next().find('[data-child-grid="'+id+'"] > .formgrid-nested-pagination');
+}
+function pagedSeed({grid,add}) {
+    sortableSeed({grid,add});
+    grid('areas').gridPagingCustom({customSize:2});
+    grid('types').gridPagingCustom({customSize:1});
+    add('types',{id:'t2',parentId:'a1',name:'Type Two'});
+}
+test('nested paging renders only its active slice and submits every source row',t=>{
+    const s=setup([{gridId:'areas',foreignKey:'parentId',sortWithButtons:'true'}],{seed:pagedSeed});
+    t.after(()=>s.dom.window.close());s.expand(s.first);
+    assert.equal(sectionRows(s).length,2);
+    assert.equal(nestedPager(s).find('select').val(),'2');
+    assert.match(nestedPager(s).text(),/Showing 1–2 of 3 rows. Page 1 of 2/);
+    assert.equal(nestedPager(s).find('.formgrid-nested-page-prev').prop('disabled'),true);
+    const before=s.$('form').serializeArray();
+    nestedPager(s).find('.formgrid-nested-page-next').trigger('click');
+    assert.equal(sectionRows(s).length,1);assert.match(sectionRows(s).text(),/Fifth Area/);
+    assert.equal(sectionRows(s).find('.formgrid-nested-row-number').text(),'3');
+    assert.equal(sectionRows(s).find('.formgrid-nested-moveup').prop('disabled'),false);
+    assert.equal(sectionRows(s).find('.formgrid-nested-movedown').prop('disabled'),true);
+    assert.equal(nestedPager(s).find('.formgrid-nested-page-next').prop('disabled'),true);
+    assert.deepEqual(s.$('form').serializeArray(),before);
+    nestedPager(s).find('.formgrid-nested-page-first').trigger('click');
+    assert.equal(sectionRows(s).length,2);
+});
+test('nested pages are isolated by parent and level and survive root paging and collapse',t=>{
+    const s=setup(undefined,{count:1,seed:pagedSeed});t.after(()=>s.dom.window.close());s.expand(s.first);
+    sectionRows(s).first().find('.formgrid-nested-toggle').trigger('click');
+    nestedPager(s,s.first,'types').find('.formgrid-nested-page-next').trigger('click');
+    assert.match(s.first.next().find('[data-child-grid="types"] tbody').text(),/Type Two/);
+    nestedPager(s).find('.formgrid-nested-page-last').trigger('click');
+    assert.equal(s.first.next().find('[data-child-grid="types"]').length,0);
+    s.grid('plants').gridPagingCustom('showPage',2);s.expand(s.second);
+    assert.match(nestedPager(s,s.second).text(),/Page 1 of 1/);
+    s.grid('plants').gridPagingCustom('showPage',1);
+    assert.match(nestedPager(s).text(),/Page 2 of 2/);
+    s.expand(s.first);s.expand(s.first);
+    assert.match(nestedPager(s).text(),/Page 2 of 2/);
+    nestedPager(s).find('.formgrid-nested-page-prev').trigger('click');
+    assert.match(s.first.next().find('[data-child-grid="types"] tbody').text(),/Type Two/);
+    assert.doesNotMatch(s.first.next().find('[data-child-grid="types"] tbody').text(),/Type One/);
+});
+test('page size changes stay local and pagination remains available in readonly mode',t=>{
+    const s=setup(undefined,{readonly:true,seed:pagedSeed});t.after(()=>s.dom.window.close());
+    s.expand(s.first);s.expand(s.second);
+    let changes=0;s.grid('plants').on('change.pagingTest',()=>changes++);
+    nestedPager(s).find('select').val('10').trigger('change');
+    assert.equal(sectionRows(s).length,3);assert.equal(changes,0);
+    assert.equal(nestedPager(s,s.second).find('select').val(),'2');
+    s.grid('areas').trigger('change');
+    assert.equal(nestedPager(s).find('select').val(),'10');
+    assert.equal(s.first.next().find('.grid-row-action,.formgrid-nested-add').length,0);
+});
+test('nested move crosses page boundaries and edit, duplicate, delete target the visible source row',t=>{
+    const s=setup([{gridId:'areas',foreignKey:'parentId',sortWithButtons:'true'}],{seed:pagedSeed});
+    t.after(()=>s.dom.window.close());s.expand(s.first);
+    sectionRows(s).last().find('.formgrid-nested-movedown').trigger('click');
+    assert.match(nestedPager(s).text(),/Page 2 of 2/);assert.match(sectionRows(s).text(),/Third Area/);
+    sectionRows(s).find('.formgrid-nested-edit').trigger('click');
+    assert.equal(JSON.parse(s.popups.at(-1)[2]._jsonFormData).id,'a3');
+    sectionRows(s).find('.formgrid-nested-duplicate').trigger('click');
+    assert.equal(sectionRows(s).length,2);
+    const values=Array.from(s.grid('areas').getValues()).filter(v=>v.parentId==='p1');
+    assert.equal(values.length,4);assert.equal(values[3].name,'Third Area');assert.notEqual(values[3].id,'a3');
+    sectionRows(s).last().find('.formgrid-nested-delete').trigger('click');
+    sectionRows(s).find('.formgrid-nested-delete').trigger('click');
+    assert.match(nestedPager(s).text(),/Page 1 of 1/);assert.equal(sectionRows(s).length,2);
+    assert.deepEqual(Array.from(s.grid('areas').getValues()).filter(v=>v.parentId==='p2').map(v=>v.id),['a2','a4']);
+});
+test('nested Add opens its last page and filtering clamps the page without dropping submitted rows',t=>{
+    const s=setup([{gridId:'areas',foreignKey:'parentId'}],{seed:pagedSeed});
+    t.after(()=>s.dom.window.close());s.expand(s.first);
+    s.first.next().find('.formgrid-nested-add').trigger('click');
+    const params=s.popups.at(-1)[2];
+    s.window[params._callback]({result:JSON.stringify({id:'new',name:'New Area'})});
+    assert.match(nestedPager(s).text(),/Showing 3–4 of 4 rows/);assert.match(sectionRows(s).text(),/New Area/);
+    s.grid('areas').children('table').find('tr.grid-row').filter(function(){return ['a5','new'].includes(s.data(s.$(this)).id);}).addClass('fg-hidden');
+    s.grid('areas').trigger('change');
+    assert.match(nestedPager(s).text(),/Showing 1–2 of 2 rows. Page 1 of 1/);
+    assert.equal(s.grid('areas').getValues().length,6);
+});
+test('bulk expansion bounds rendered descendants and navigation controls for large child lists',t=>{
+    const s=setup(undefined,{seed({add}){
+        for(let i=0;i<120;i++) {
+            add('areas',{id:'bulk'+i,parentId:'p1',name:'Area '+i});
+            add('types',{id:'type'+i,parentId:'bulk'+i,name:'Type '+i});
+        }
+    }});t.after(()=>s.dom.window.close());
+    s.grid('plants').find('.formgrid-nested-expand-all').trigger('click');
+    assert.equal(sectionRows(s).length,20);
+    assert.equal(s.first.next().find('[data-child-grid="types"]').length,20);
+    assert.equal(nestedPager(s).find('button').length,4);
+    nestedPager(s).find('.formgrid-nested-page-last').trigger('click');
+    assert.equal(sectionRows(s).length,1);
+    assert.equal(s.first.next().find('[data-child-grid="types"]').length,1);
+    assert.match(nestedPager(s).text(),/Showing 121–121 of 121 rows. Page 7 of 7/);
+});
 test('nested toolbar uses the same icon factory, tooltips and button spacing classes as the main grid',t=>{
     const s=setup([{gridId:'areas',foreignKey:'parentId',sortWithButtons:'true',enableDuplicate:'true'}],{seed:sortableSeed});
     t.after(()=>s.dom.window.close());s.expand(s.first);

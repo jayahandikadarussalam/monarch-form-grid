@@ -123,7 +123,7 @@
             sizeSelect.on("change.shadowImport", function(event) {
                 event.stopPropagation();
                 var size = Number($(this).val());
-                if ([10,20,30,40,50,60,70,80,90,100].indexOf(size) === -1) return;
+                if ([10,20,50,100].indexOf(size) === -1) return;
                 previewPageSize = size;
                 previewPage = 1;
                 renderPreviewPage();

@@ -73,6 +73,8 @@ public class FormGridImportTemplateTest {
     public void nestedConfigurationIsOptInEscapedAndReceivesReadonlyState() throws Exception {
         String html = render(false, true, null, false, true);
         assertTrue(html.contains("grid.formGridNested({relations: JSON.parse("));
+        assertTrue(html.contains("jquery.formGridNested.js?v=" + new FormGridCustom().getVersion()));
+        assertTrue(html.contains("formGridStyle.css?v=" + new FormGridCustom().getVersion()));
         assertTrue(html.contains("readonly: true"));
         assertTrue(html.contains("class=\"formgrid-nested-config\""));
         assertTrue(html.contains("Areas &lt;script&gt; &amp;"));
@@ -91,11 +93,17 @@ public class FormGridImportTemplateTest {
         assertTrue(html.contains("Name &amp; &lt;Label&gt;"));
         assertTrue(html.contains("accept=\".xlsx,.xls,.csv\""));
         assertTrue(html.contains("formgrid-import-confirm\" disabled"));
-        assertTrue(html.contains("vendor/xlsx.full.min.js?v=2.12.0"));
+        assertTrue(html.contains("vendor/xlsx.full.min.js?v=" + new FormGridCustom().getVersion()));
         assertTrue(html.contains("Download Excel Template"));
         assertFalse(html.contains("previewPageSize:"));
         assertTrue(html.contains("class=\"formgrid-import-pagination\""));
-        assertTrue(html.contains("value=\"100\""));
+        int sizeStart = html.indexOf("<select class=\"formgrid-import-page-size\">");
+        assertTrue(sizeStart >= 0);
+        String sizes = html.substring(sizeStart, html.indexOf("</select>", sizeStart));
+        assertEquals(4, sizes.split("<option ").length - 1);
+        for (int size : new int[]{10, 20, 50, 100}) {
+            assertTrue(sizes.contains("value=\"" + size + "\""));
+        }
         assertTrue(html.contains("Excel / CSV file"));
         assertTrue(html.contains("Import Rows"));
         assertFalse(html.contains("@@form.formgrid.import."));

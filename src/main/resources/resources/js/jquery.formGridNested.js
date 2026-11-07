@@ -21,6 +21,7 @@
             if (!scope.length) scope = root.parent();
             var rootId = root.children('.formgrid-field-id').val() || root.attr('name');
             var nodes = new Map(), children = new Map(), expanded = new Set(), detailId = ++nextId;
+            var pagination = new WeakMap();
             var status = $('<div class="formgrid-nested-status form-error-message" role="alert" hidden>').prependTo(root);
             function error(message) { status.text(message).prop('hidden', !message); }
             function direct(id) { return children.get(id) || []; }
@@ -118,6 +119,16 @@
             function canSort(node) {
                 return node.sortWithButtons === 'true';
             }
+            function pageState(node, parentRow) {
+                var states = pagination.get(parentRow[0]);
+                if (!states) { states = new Map(); pagination.set(parentRow[0], states); }
+                if (!states.has(node.gridId)) {
+                    var options = node.grid.children('table').data('pagingOptions') || {};
+                    var size = Number(options.size);
+                    states.set(node.gridId, {page: 1, size: isFinite(size) && size >= 1 ? Math.floor(size) : 20});
+                }
+                return states.get(node.gridId);
+            }
             function addCallback(node, parentRow) {
                 var grid = node.grid;
                 var callback = grid.attr('id') + '_nested_add_' + detailId;
@@ -130,6 +141,8 @@
                     var callbackArgs = $.extend({}, args, {result: JSON.stringify(result)});
                     $.formGridCustom.showHidePlusIcon(grid);
                     if (grid.children('.formgrid-custom-add').prop('disabled')) return;
+                    var state = pageState(node, parentRow);
+                    state.page = Math.ceil((matching(node, parentRow).not('.fg-hidden').length + 1) / state.size);
                     grid.formGridCustom('addRow', callbackArgs);
                 };
                 return callback;
@@ -146,6 +159,8 @@
                 var siblings = matching(node, parentRow).not('.fg-hidden'), index = siblings.index(source);
                 var target = index + direction;
                 if (index < 0 || target < 0 || target >= siblings.length) return;
+                var state = pageState(node, parentRow);
+                state.page = Math.floor(target / state.size) + 1;
                 if (direction < 0) source.insertBefore(siblings.eq(target)); else source.insertAfter(siblings.eq(target));
                 node.grid.formGridCustom('refreshIndex');
                 node.grid.trigger('change');
@@ -230,21 +245,58 @@
                     header.append('<th class="formgrid-nested-actions-header" aria-label="Actions"></th>');
                     table.append($('<thead>').append(header), body);
                     var matched = (lookup ? lookup(node, key) : matching(node, parentRow)).not('.fg-hidden');
-                    matched.each(function(index) {
-                        var source = $(this), view = $('<tr class="formgrid-nested-row">');
-                        if (showNumber) view.append($('<td class="formgrid-nested-row-number">').text(index + 1));
-                        fields.forEach(function(field) { view.append(displayCell(source.children('td').eq(field.index))); });
-                        var actions = $('<td class="formgrid-nested-actions">').append(rowActions(node, parentRow, source, index, matched.length));
-                        view.append(actions); body.append(view);
-                        if (direct(node.gridId).length) {
-                            toggle(node.gridId, source, view);
-                            if (expanded.has(source[0])) body.append($('<tr class="formgrid-nested-detail">')
-                                .append($('<td>').attr('colspan', header.children().length).append(build(node.gridId, source, lookup))));
-                        }
+                    var state = pageState(node, parentRow);
+                    var pager = $('<div class="formgrid-nested-pagination" role="group">').attr('aria-label', (node.label || node.gridId) + ' pagination');
+                    var sizeSelect = $('<select class="formgrid-nested-page-size" aria-label="Rows per page">');
+                    [10, 20, 50, 100].concat([state.size]).filter(function(value, index, sizes) {
+                        return sizes.indexOf(value) === index;
+                    }).sort(function(a, b) { return a - b; }).forEach(function(size) {
+                        sizeSelect.append($('<option>').val(size).text(size));
                     });
-                    if (!matched.length) body.append($('<tr>').append($('<td class="formgrid-nested-empty">')
-                        .attr('colspan', header.children().length).text('No related records.')));
-                    section.append($('<div class="formgrid-nested-scroll">').append(table)); content.append(section);
+                    sizeSelect.val(String(state.size)).on('change.formGridNested', function(event) {
+                        event.stopPropagation();
+                        var size = Number($(this).val());
+                        if (!isFinite(size) || size < 1) return;
+                        state.page = Math.floor(((state.page - 1) * state.size) / size) + 1;
+                        state.size = Math.floor(size);
+                        renderPage();
+                    });
+                    var info = $('<span class="formgrid-nested-page-info" role="status" aria-live="polite">');
+                    function navigate(page) { state.page = page; renderPage(); }
+                    var first = button('«', 'formgrid-nested-page-first', function() { navigate(1); }).attr('aria-label', 'First page');
+                    var previous = button('‹', 'formgrid-nested-page-prev', function() { navigate(state.page - 1); }).attr('aria-label', 'Previous page');
+                    var next = button('›', 'formgrid-nested-page-next', function() { navigate(state.page + 1); }).attr('aria-label', 'Next page');
+                    var last = button('»', 'formgrid-nested-page-last', function() { navigate(Math.ceil(matched.length / state.size)); }).attr('aria-label', 'Last page');
+                    pager.append($('<label class="formgrid-nested-page-size-label">').append($('<span>').text('Rows per page'), sizeSelect), info,
+                        $('<div class="formgrid-nested-page-actions">').append(first, previous, next, last));
+                    function renderPage() {
+                        var pages = Math.max(1, Math.ceil(matched.length / state.size));
+                        state.page = Math.max(1, Math.min(state.page, pages));
+                        var start = (state.page - 1) * state.size, end = Math.min(start + state.size, matched.length);
+                        body.empty();
+                        // Build only the active page, including expanded descendants.
+                        matched.slice(start, end).each(function(offset) {
+                            var index = start + offset;
+                            var source = $(this), view = $('<tr class="formgrid-nested-row">');
+                            if (showNumber) view.append($('<td class="formgrid-nested-row-number">').text(index + 1));
+                            fields.forEach(function(field) { view.append(displayCell(source.children('td').eq(field.index))); });
+                            var actions = $('<td class="formgrid-nested-actions">').append(rowActions(node, parentRow, source, index, matched.length));
+                            view.append(actions); body.append(view);
+                            if (direct(node.gridId).length) {
+                                toggle(node.gridId, source, view);
+                                if (expanded.has(source[0])) body.append($('<tr class="formgrid-nested-detail">')
+                                    .append($('<td>').attr('colspan', header.children().length).append(build(node.gridId, source, lookup))));
+                            }
+                        });
+                        if (!matched.length) body.append($('<tr>').append($('<td class="formgrid-nested-empty">')
+                            .attr('colspan', header.children().length).text('No related records.')));
+                        info.text('Showing ' + (matched.length ? start + 1 : 0) + '–' + end + ' of ' + matched.length + ' rows. Page ' + state.page + ' of ' + pages + '.');
+                        first.add(previous).prop('disabled', state.page === 1);
+                        next.add(last).prop('disabled', state.page === pages);
+                        pager.prop('hidden', matched.length === 0);
+                    }
+                    renderPage();
+                    section.append($('<div class="formgrid-nested-scroll">').append(table), pager); content.append(section);
                 });
                 return content;
             }
