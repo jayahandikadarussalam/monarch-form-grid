@@ -241,7 +241,7 @@
       {
         "name": "nestedPropertiesLayout",
         "type": "custom",
-        "script_url": "[CONTEXT_PATH]/plugin/com.monarch.shadow.lib.FormGridCustom/js/formGridNestedProperties.js?v=2.11.0",
+        "script_url": "[CONTEXT_PATH]/plugin/com.monarch.shadow.lib.FormGridCustom/js/formGridNestedProperties.js?v=2.12.0",
         "field_options_url": "[CONTEXT_PATH]/web/json/console/app[APP_PATH]/form/columns/options"
       }
     ]

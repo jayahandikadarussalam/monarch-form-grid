@@ -463,3 +463,64 @@ test('nested Disable Duplicate removes copy actions per relation while other rel
         assert.equal(s.grid('areas').getValues().length,2);
     }
 });
+
+test('Expand all opens every configured level and branch; Collapse all clears descendants without changing form data',t=>{
+    const relations=[{gridId:'areas',foreignKey:'parentId'},{gridId:'groups',parentGridId:'areas',foreignKey:'parentId'},
+        {gridId:'types',parentGridId:'groups',foreignKey:'parentId'},{gridId:'tags',parentGridId:'types',foreignKey:'parentId'},
+        {gridId:'parameters',parentGridId:'tags',foreignKey:'parentId'},{gridId:'other',foreignKey:'parentId'}];
+    const s=setup(relations,{extraIds:['groups','tags','parameters'],seed({grid,add}){
+        grid('types').updateRowData(data=>{data.parentId='g1';});
+        add('groups',{id:'g1',parentId:'a1',name:'Pump Group'});add('tags',{id:'tag1',parentId:'t1',name:'Pump Tag'});
+        add('parameters',{id:'param1',parentId:'tag1',name:'Pressure'});add('other',{id:'branch1',parentId:'p2',name:'Other Branch'});
+    }});t.after(()=>s.dom.window.close());
+    const root=s.grid('plants'),expand=root.children('.formgrid-nested-bulk-actions').find('.formgrid-nested-expand-all');
+    const collapse=root.children('.formgrid-nested-bulk-actions').find('.formgrid-nested-collapse-all');
+    const before=s.$('form').serialize();let submits=0;s.$('form').on('submit.test',()=>{submits++;});
+    assert.equal(expand.attr('type'),'button');assert.equal(collapse.prop('disabled'),true);
+    expand.trigger('click');
+    assert.match(s.first.next().text(),/Pressure/);assert.match(s.second.next().text(),/Other Branch/);
+    assert.equal(root.find('.formgrid-nested-toggle[aria-expanded="false"]').length,0);
+    assert.equal(expand.prop('disabled'),true);assert.equal(collapse.prop('disabled'),false);
+    assert.equal(s.popups.length,0);assert.equal(submits,0);assert.equal(s.$('form').serialize(),before);
+    collapse.trigger('click');
+    assert.equal(root.find('.formgrid-nested-root-detail,.formgrid-nested-detail').length,0);
+    assert.equal(root.find('.formgrid-nested-toggle[aria-expanded="true"]').length,0);
+    assert.equal(collapse.prop('disabled'),true);assert.equal(expand.prop('disabled'),false);
+    s.expand(s.first);assert.doesNotMatch(s.first.next().text(),/Pressure/);
+    assert.equal(s.first.next().find('.formgrid-nested-toggle').first().attr('aria-expanded'),'false');
+    assert.equal(s.$('form').serialize(),before);
+});
+
+test('bulk expansion survives paging while off-page subtrees remain unrendered and collapse clears every page',t=>{
+    const s=setup(undefined,{count:1,readonly:true});t.after(()=>s.dom.window.close());const root=s.grid('plants');
+    root.find('.formgrid-nested-expand-all').trigger('click');
+    assert.match(s.first.next().text(),/Type One/);
+    assert.equal(s.second.next().hasClass('formgrid-nested-root-detail'),true);
+    assert.equal(s.second.next().find('.formgrid-nested-content').length,0);
+    assert.equal(s.second.next().css('display'),'none');
+    root.gridPagingCustom('showPage',2);
+    assert.equal(s.first.next().find('.formgrid-nested-content').length,0);
+    assert.match(s.second.next().text(),/Area Two/);assert.equal(s.second.next().find('.formgrid-nested-toggle').attr('aria-expanded'),'true');
+    assert.equal(root.find('.formgrid-nested-root-detail .grid-row-action,.formgrid-nested-add').length,0);
+    root.find('.formgrid-nested-collapse-all').trigger('click');
+    root.gridPagingCustom('showPage',1);assert.equal(root.find('.formgrid-nested-root-detail').length,0);
+    assert.equal(s.first.find('.formgrid-nested-toggle').attr('aria-expanded'),'false');
+});
+
+test('bulk controls are scoped to their own root and handle empty grids and newly added parent rows',t=>{
+    const s=setup(undefined,{extraIds:['otherAreas']});t.after(()=>s.dom.window.close());
+    const other=s.grid('other');other.formGridNested({relations:[{gridId:'otherAreas',foreignKey:'parentId'}]});
+    assert.equal(other.find('.formgrid-nested-expand-all').prop('disabled'),true);
+    assert.equal(other.find('.formgrid-nested-collapse-all').prop('disabled'),true);
+    s.add('other',{id:'o1',name:'Other Parent'});s.add('otherAreas',{id:'oa1',parentId:'o1',name:'Other Child'});
+    assert.equal(other.find('.formgrid-nested-expand-all').prop('disabled'),false);
+    const root=s.grid('plants');root.find('.formgrid-nested-expand-all').trigger('click');
+    assert.equal(other.find('.formgrid-nested-root-detail').length,0);
+    other.find('.formgrid-nested-expand-all').trigger('click');assert.match(other.text(),/Other Child/);
+    root.find('.formgrid-nested-collapse-all').trigger('click');assert.match(other.text(),/Other Child/);
+    root.find('.formgrid-nested-expand-all').trigger('click');
+    s.add('plants',{id:'p3',name:'New Parent'});
+    assert.equal(root.find('.formgrid-nested-expand-all').prop('disabled'),false);
+    root.find('.formgrid-nested-expand-all').trigger('click');assert.equal(root.find('.formgrid-nested-expand-all').prop('disabled'),true);
+    root.formGridNested({relations:[]});assert.equal(root.children('.formgrid-nested-bulk-actions').length,1);
+});

@@ -91,7 +91,7 @@ public class FormGridImportTemplateTest {
         assertTrue(html.contains("Name &amp; &lt;Label&gt;"));
         assertTrue(html.contains("accept=\".xlsx,.xls,.csv\""));
         assertTrue(html.contains("formgrid-import-confirm\" disabled"));
-        assertTrue(html.contains("vendor/xlsx.full.min.js?v=2.11.0"));
+        assertTrue(html.contains("vendor/xlsx.full.min.js?v=2.12.0"));
         assertTrue(html.contains("Download Excel Template"));
         assertFalse(html.contains("previewPageSize:"));
         assertTrue(html.contains("class=\"formgrid-import-pagination\""));

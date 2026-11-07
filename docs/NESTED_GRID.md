@@ -1,6 +1,6 @@
 # Dynamic nested subgrids
 
-Version 2.11.0 provides optional expandable parent/child views. Nesting is disabled by default. Configure the complete hierarchy on one root Shadow Form Grid; additional tables and levels require Form Builder configuration, without rebuilding the plugin.
+Version 2.12.0 provides optional expandable parent/child views. Nesting is disabled by default. Configure the complete hierarchy on one root Shadow Form Grid; additional tables and levels require Form Builder configuration, without rebuilding the plugin.
 
 ## Form Builder setup
 
@@ -129,6 +129,8 @@ If you use JSON storage without store binders, each grid continues to save its o
 
 ## Runtime behavior
 
+- **Collapse all** and **Expand all**, above the root table, close or open every configured level and branch for the currently loaded rows. These controls also work in Read Only mode and affect only their own root grid. They do not submit the Form or change row data.
+- Bulk expansion includes parent rows on other grid pages. Off-page detail content is rendered when its page is opened and released when hidden, preserving expansion state. Child lookup is indexed by FK during each render. A later added parent starts collapsed; click Expand all again to include it. Collapse all clears descendant expansion state too.
 - Click **+** / **−** to expand or collapse a row. Each row remembers its expanded descendants while paging or refreshing. Empty subgrids show **No related records.**
 - **Add** opens the child grid's configured Form. The FK is prefilled and enforced in the callback, including temporary binder request parameters. A new row immediately belongs to the selected parent. Add honors Read Only, Disable Add, and the source grid's maximum row limit.
 - The toolbar uses the same icon buttons as the root grid: Move Up, Move Down, Edit, Duplicate, and Delete, with tooltips and accessible labels.

@@ -254,6 +254,11 @@
 
 /* Nested views keep the original grids and their named JSON fields in the form. */
 .form-cell.formgrid-nested-source { display: none !important; }
+.formgrid-nested-bulk-actions { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 16px; margin: 0 0 8px; }
+.formgrid-custom .formgrid-nested-bulk-action { background: transparent; border: 0; box-shadow: none; padding: 0; color: inherit; font: inherit; cursor: pointer; }
+.formgrid-custom .formgrid-nested-bulk-action:hover:not(:disabled) { text-decoration: underline; }
+.formgrid-custom .formgrid-nested-bulk-action:focus-visible { outline: 2px solid currentColor; outline-offset: 3px; }
+.formgrid-custom .formgrid-nested-bulk-action:disabled { opacity: 0.45; cursor: default; }
 .formgrid-custom .formgrid-nested-togglecell { width: 38px; min-width: 38px; text-align: center; }
 .formgrid-custom .formgrid-nested-toggle { width: 28px; height: 28px; padding: 0; border: 1px solid #cbd5e1; border-radius: 4px; background: #fff; color: #334155; font-size: 20px; line-height: 1; cursor: pointer; }
 .formgrid-custom .formgrid-nested-toggle:focus-visible { outline: 2px solid #2563eb; outline-offset: 2px; }

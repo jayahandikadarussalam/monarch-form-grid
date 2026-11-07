@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.12.0] - 2026-11-07
+
+### Ditambahkan
+- Tombol **Collapse all** dan **Expand all** di atas grid nested untuk menutup atau membuka seluruh level dan cabang yang sudah dimuat, termasuk baris pada halaman lain.
+- Pengaturan expand/collapse terisolasi per root grid dan tersedia dalam mode readonly tanpa mengubah data Form.
+- Subtree halaman tidak aktif dirender saat halamannya dibuka. Pencarian child memakai indeks FK per render agar bulk expand lebih ringan.
+
 ## [2.11.0] - 2026-11-07
 
 ### Ditambahkan

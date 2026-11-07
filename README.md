@@ -152,4 +152,4 @@ $('#employeeGrid').hideRowsByCondition(function(data) {
 
 ## Nested Subgrids
 
-Version 2.11.0 supports dynamic nested parent/child grids. See [Nested Grid setup and foreign keys](docs/NESTED_GRID.md) for the Plant → Area → Equipment Group → Equipment Type → Tags → Parameter example and binder configuration.
+Version 2.12.0 supports dynamic nested parent/child grids. See [Nested Grid setup and foreign keys](docs/NESTED_GRID.md) for the Plant → Area → Equipment Group → Equipment Type → Tags → Parameter example and binder configuration.

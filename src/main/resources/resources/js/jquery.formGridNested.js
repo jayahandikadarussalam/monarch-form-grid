@@ -200,7 +200,7 @@
                 }
                 return cell;
             }
-            function build(id, parentRow) {
+            function build(id, parentRow, lookup) {
                 var content = $('<div class="formgrid-nested-content">');
                 direct(id).forEach(function(node) {
                     var section = $('<section class="formgrid-nested-section">').attr('data-child-grid', node.gridId);
@@ -229,7 +229,7 @@
                     if (direct(node.gridId).length) header.prepend('<th class="formgrid-nested-togglecell"></th>');
                     header.append('<th class="formgrid-nested-actions-header" aria-label="Actions"></th>');
                     table.append($('<thead>').append(header), body);
-                    var matched = matching(node, parentRow).not('.fg-hidden');
+                    var matched = (lookup ? lookup(node, key) : matching(node, parentRow)).not('.fg-hidden');
                     matched.each(function(index) {
                         var source = $(this), view = $('<tr class="formgrid-nested-row">');
                         if (showNumber) view.append($('<td class="formgrid-nested-row-number">').text(index + 1));
@@ -239,7 +239,7 @@
                         if (direct(node.gridId).length) {
                             toggle(node.gridId, source, view);
                             if (expanded.has(source[0])) body.append($('<tr class="formgrid-nested-detail">')
-                                .append($('<td>').attr('colspan', header.children().length).append(build(node.gridId, source))));
+                                .append($('<td>').attr('colspan', header.children().length).append(build(node.gridId, source, lookup))));
                         }
                     });
                     if (!matched.length) body.append($('<tr>').append($('<td class="formgrid-nested-empty">')
@@ -249,22 +249,60 @@
                 return content;
             }
             function syncVisibility() {
+                var indexes = new Map();
+                function lookup(node, key) {
+                    if (!indexes.has(node.gridId)) {
+                        var index = new Map();
+                        rows(node.grid).each(function() {
+                            var value = text(read($(this))[node.foreignKey]);
+                            if (!index.has(value)) index.set(value, []);
+                            index.get(value).push(this);
+                        });
+                        indexes.set(node.gridId, index);
+                    }
+                    return $(indexes.get(node.gridId).get(key) || []);
+                }
                 root.children('table').find('tr.formgrid-nested-root-detail').each(function() {
                     var source = $(this).data('parentRow');
-                    $(this).toggle(!source.hasClass('fg-hidden') && !source.hasClass('pg-tr-hide') && source.css('display') !== 'none');
+                    var visible = !source.hasClass('fg-hidden') && !source.hasClass('pg-tr-hide') && source.css('display') !== 'none';
+                    var cell = $(this).children('td');
+                    // Keep expansion state across pages without rendering off-page subtrees.
+                    if (!visible) cell.empty();
+                    else if (!cell.children().length) cell.append(build(rootId, source, lookup));
+                    $(this).toggle(visible);
                 });
+            }
+            function expandableRows() {
+                var result = [];
+                nodes.forEach(function(node, id) {
+                    if (direct(id).length) rows(node.grid).not('.fg-hidden').each(function() { result.push(this); });
+                });
+                return result;
             }
             function refresh() {
                 try {
+                    var candidates = expandableRows(), current = new Set(candidates);
+                    expanded.forEach(function(row) { if (!current.has(row)) expanded.delete(row); });
                     root.children('table').find('tr.formgrid-nested-root-detail').remove();
                     rows(root).each(function() {
                         var row = $(this); toggle(rootId, row, row);
                         if (expanded.has(this)) row.after($('<tr class="formgrid-nested-root-detail">').data('parentRow', row)
-                            .append($('<td>').attr('colspan', row.children().length).append(build(rootId, row))));
+                            .append($('<td>').attr('colspan', row.children().length)));
                     });
+                    collapseAll.prop('disabled', expanded.size === 0);
+                    expandAll.prop('disabled', candidates.length === 0 || candidates.every(function(row) { return expanded.has(row); }));
                     syncVisibility(); error(validateData());
                 } catch (problem) { error(problem.message); }
             }
+            var collapseAll = button('Collapse all', 'formgrid-nested-bulk-action formgrid-nested-collapse-all', function() {
+                expanded.clear(); refresh();
+            });
+            var expandAll = button('Expand all', 'formgrid-nested-bulk-action formgrid-nested-expand-all', function() {
+                expandableRows().forEach(function(row) { expanded.add(row); });
+                refresh();
+            });
+            $('<div class="formgrid-nested-bulk-actions" role="group" aria-label="Nested subgrid controls">')
+                .append(collapseAll, expandAll).insertBefore(root.children('table'));
             root.data('formGridNested', {refresh: refresh}).addClass('formgrid-nested');
             root.children('table').find('thead > tr').prepend('<th class="formgrid-nested-togglecell"></th>');
             root.children('table').find('tr.grid-row-template').prepend('<td class="formgrid-nested-togglecell"></td>');
@@ -292,7 +330,9 @@
                     }
                 });
             });
-            root.on('formgrid:pagechanged.formGridNested', syncVisibility);
+            root.on('formgrid:pagechanged.formGridNested', function() {
+                try { syncVisibility(); } catch (problem) { error(problem.message); }
+            });
             root.on('formgrid:sorted.formGridNested', refresh);
             root.closest('form').on('submit.formGridNested' + detailId, function(event) {
                 var message;

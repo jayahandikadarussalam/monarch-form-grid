@@ -106,7 +106,7 @@ test('the layout also applies after a native CSV switch recreates the table',asy
 test('the presentation helper is versioned and leaves native grid, Form AJAX, and CSV column order intact',()=>{
     assert.equal(definition.type,'grid');
     const helper=properties.find(p=>p.name==='nestedPropertiesLayout');
-    assert.equal(helper.type,'custom');assert.match(helper.script_url,/formGridNestedProperties\.js\?v=2\.11\.0$/);
+    assert.equal(helper.type,'custom');assert.match(helper.script_url,/formGridNestedProperties\.js\?v=2\.12\.0$/);
     assert.equal(definition.columns.find(c=>c.key==='formDefId').type,'selectbox');
     assert.equal(definition.columns.map(c=>first[c.key]).join(';'),'areasGrid;areass;Areas;;id;parentid;true;sort;false;false');
 });
