@@ -45,7 +45,7 @@
                 return; // Skip jika row disembunyikan oleh logic filter
             }
 
-            const json = row.find('textarea').val();
+            const json = row.find('textarea:not(.formgrid-editor)').val();
 
             try {
                 const parsed = JSON.parse(json);
@@ -80,7 +80,7 @@
 
         this.each(function() {
             $(this).find('tr.grid-row').each(function() {
-                const json = $(this).find('textarea').val();
+                const json = $(this).find('textarea:not(.formgrid-editor)').val();
 
                 try {
                     const parsed = JSON.parse(json);
@@ -191,7 +191,7 @@
             const table = container.find("> table");
 
             container.find("tr.grid-row").each(function(rowIndex) {
-                const $textarea = $(this).find("textarea");
+                const $textarea = $(this).find("textarea:not(.formgrid-editor)");
                 try {
                     let data = JSON.parse($textarea.val());
 
@@ -236,7 +236,7 @@
             container.find("tr.grid-row").each(function() {
                 const $row = $(this);
                 const $checkbox = $row.find('.grid-checkbox-children');
-                const json = $row.find("textarea").val();
+                const json = $row.find("textarea:not(.formgrid-editor)").val();
 
                 try {
                     const data = JSON.parse(json);
@@ -285,7 +285,7 @@
 
             table.find("tr.grid-row").not(".grid-row-template").each(function() {
                 const $row = $(this);
-                const json = $row.find("textarea").val();
+                const json = $row.find("textarea:not(.formgrid-editor)").val();
 
                 try {
                     const data = JSON.parse(json);

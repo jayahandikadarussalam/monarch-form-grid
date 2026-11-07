@@ -41,7 +41,7 @@ import java.util.*;
 
 public class FormGridCustom extends Element implements FormBuilderPaletteElement, FormContainer, GridInnerDataRetriever, PwaOfflineResources, PwaOfflineReadonly {
     private static final String MESSAGE_PATH = "messages/FormGridCustom";
-    private static final String VERSION = "2.2.2";
+    private static final String VERSION = "2.3.0";
 
     protected Map<FormData, FormRowSet> cachedRowSet = new HashMap<>();
     protected Map<String, FormData> formDatas = new HashMap<>();
@@ -92,6 +92,11 @@ public class FormGridCustom extends Element implements FormBuilderPaletteElement
 
         String json = getSelectedFormJson();
         dataModel.put("json", json);
+        boolean editable = "true".equals(getPropertyString("editable")) && !FormUtil.isReadonly(this, formData);
+        dataModel.put("editableEnabled", editable);
+        if (editable) {
+            dataModel.put("editableColumnsJson", getEditableColumnsJson(headers, formData));
+        }
         boolean importEnabled = "true".equals(getPropertyString("enableImport"))
                 && !FormUtil.isReadonly(this, formData)
                 && !"true".equals(getPropertyString("disabledAdd"));
@@ -203,6 +208,49 @@ public class FormGridCustom extends Element implements FormBuilderPaletteElement
                 if ("timeOnly".equals(pickerType)) dateFormat = timeFormat;
                 if ("utcdateTime".equals(pickerType)) dateFormat = "yyyy-MM-dd HH:mm";
                 column.put("dateFormat", dateFormat);
+            }
+            columns.put(column);
+        }
+        return columns.toString();
+    }
+
+    // Only expose editors for known field implementations. Custom plugins retain their popup editor.
+    protected String getEditableColumnsJson(Map<String, Map<String, Object>> headers, FormData data) {
+        JSONArray columns = new JSONArray();
+        Form innerForm = getForm();
+        for (Map.Entry<String, Map<String, Object>> entry : headers.entrySet()) {
+            String id = entry.getKey();
+            if (Arrays.asList("id", "dateCreated", "dateModified", "createdBy", "createdByName", "modifiedBy", "modifiedByName").contains(id)
+                    || "no".equals(entry.getValue().get("visibility"))) continue;
+            Element field = innerForm == null ? null : FormUtil.findElement(id, innerForm, data);
+            if (field == null || FormUtil.isReadonly(field, data)) continue;
+            String type = field.getClass().getName();
+            if (!type.startsWith("org.joget.apps.form.lib.")) continue;
+            type = type.substring(type.lastIndexOf('.') + 1);
+            if (!Arrays.asList("TextField", "TextArea", "SelectBox", "Radio", "CheckBox", "DatePicker", "FileUpload").contains(type)) continue;
+            JSONObject column = new JSONObject();
+            column.put("id", id);
+            column.put("label", entry.getValue().get("label"));
+            column.put("editor", type);
+            column.put("multiple", "true".equals(field.getPropertyString("multiple")) || "CheckBox".equals(type));
+            column.put("maxlength", field.getPropertyString("maxlength"));
+            if (Arrays.asList("SelectBox", "Radio", "CheckBox").contains(type)) {
+                if (this.optionsMap == null) this.optionsMap = new HashMap<>();
+                column.put("options", getFormOptions(getPropertyString("formDefId"), id, true, data));
+            }
+            if ("DatePicker".equals(type)) {
+                String pickerType = field.getPropertyString("datePickerType");
+                // Date/time and UTC fields retain the native popup to preserve timezone semantics.
+                if (!pickerType.isEmpty() && !"date".equals(pickerType)) continue;
+                String pattern = field.getPropertyString("dataFormat");
+                column.put("dateFormat", pattern.isEmpty() ? "yyyy-MM-dd" : pattern);
+            }
+            if ("FileUpload".equals(type)) {
+                column.put("uploadUrl", ((org.joget.apps.form.lib.FileUpload) field).getServiceUrl());
+                column.put("paramName", FormUtil.getElementParameterName(field));
+                column.put("fileType", field.getPropertyString("fileType"));
+                column.put("maxSize", field.getPropertyString("maxSize"));
+                column.put("maxSizeMsg", field.getPropertyString("maxSizeMsg"));
             }
             columns.put(column);
         }
@@ -604,9 +652,59 @@ public class FormGridCustom extends Element implements FormBuilderPaletteElement
             }
         }
 
+        if ("true".equals(getPropertyString("editable")) && !FormUtil.isReadonly(this, formData)) {
+            valid = validateEditableRows(rowSet, formData) && valid;
+        }
         return valid;
     }
 
+    protected boolean validateEditableRows(FormRowSet rows, FormData parentData) {
+        JSONArray columns = new JSONArray(getEditableColumnsJson(getHeaderMap(parentData), parentData));
+        List<String> errors = new ArrayList<>();
+        int index = 0;
+        for (FormRow row : rows) {
+            index++;
+            FormData rowData = new FormData();
+            rowData.setPrimaryKeyValue(row.getId());
+            rowData.setAssignment(parentData.getAssignment());
+            rowData.setProcessId(parentData.getProcessId());
+            rowData.setActivityId(parentData.getActivityId());
+            for (Object key : row.keySet()) {
+                String id = String.valueOf(key);
+                Element field = FormUtil.findElement(id, getForm(), rowData);
+                if (field != null) {
+                    String value = row.getProperty(id);
+                    boolean multi = field instanceof org.joget.apps.form.lib.SelectBox || field instanceof org.joget.apps.form.lib.CheckBox;
+                    String[] values = value == null ? new String[0] : multi ? value.split(";", -1) : new String[]{value};
+                    if (field instanceof org.joget.apps.form.lib.FileUpload && row.getTempFilePathMap() != null
+                            && row.getTempFilePathMap().containsKey(id)) {
+                        List<String> fileValues = new ArrayList<>(Arrays.asList(value == null ? new String[0] : value.split(";")));
+                        fileValues.addAll(Arrays.asList(row.getTempFilePathMap().get(id)));
+                        values = fileValues.toArray(new String[0]);
+                    }
+                    rowData.addRequestParameterValues(FormUtil.getElementParameterName(field), values);
+                }
+            }
+            for (int c = 0; c < columns.length(); c++) {
+                JSONObject column = columns.getJSONObject(c);
+                Element field = FormUtil.findElement(column.getString("id"), getForm(), rowData);
+                if (field != null && rowData.getRequestParameterValues(FormUtil.getElementParameterName(field)) == null) {
+                    rowData.addRequestParameterValues(FormUtil.getElementParameterName(field), new String[]{""});
+                }
+                if (field != null && !FormUtil.executeValidators(field, rowData)) {
+                    String message = rowData.getFormError(FormUtil.getElementParameterName(field));
+                    errors.add("Row " + index + " — " + column.optString("label", column.getString("id")) + ": "
+                            + (message == null || message.isEmpty() ? "Invalid value" : message));
+                }
+            }
+        }
+        if (!errors.isEmpty()) {
+            String id = FormUtil.getElementParameterName(this);
+            String previous = parentData.getFormError(id);
+            parentData.addFormError(id, (previous == null ? "" : previous + " ") + String.join("; ", errors));
+        }
+        return errors.isEmpty();
+    }
 
     protected String getDecorator() {
         String decorator = "";
@@ -1357,6 +1455,7 @@ public class FormGridCustom extends Element implements FormBuilderPaletteElement
         urls.add(contextPath + "/plugin/com.monarch.shadow.lib.FormGridCustom/js/jquery.formGridCustom.js?v=" + getVersion());
         urls.add(contextPath + "/plugin/com.monarch.shadow.lib.FormGridCustom/js/jquery.gridPagingCustom.js?v=" + getVersion());
         urls.add(contextPath + "/plugin/com.monarch.shadow.lib.FormGridCustom/js/jquery.formGridCustom.remake.js?v=" + getVersion());
+        urls.add(contextPath + "/plugin/com.monarch.shadow.lib.FormGridCustom/js/jquery.formGridEditable.js?v=" + getVersion());
         urls.add(contextPath + "/plugin/com.monarch.shadow.lib.FormGridCustom/js/jquery.utils.js?v=" + getVersion());
         urls.add(contextPath + "/plugin/com.monarch.shadow.lib.FormGridCustom/js/formGridImport.js?v=" + getVersion());
         urls.add(contextPath + "/plugin/com.monarch.shadow.lib.FormGridCustom/js/jquery.formGridImport.js?v=" + getVersion());

@@ -71,7 +71,7 @@
             var row = $(this).closest("tr");
             var container = $(row).closest("table").parent();
 
-            methods.popupForm.call(this, $(container).attr('id'), $(container).find('#formUrl').val(), $(container).find('#json').val(), $(container).find('#nonce').val(), $(container).attr('id')+"_edit", "{rowId:'"+$(row).attr('id')+"'}", $(row).find('textarea').val(), $(container).find('#height').val(), $(container).find('#width').val());
+            methods.popupForm.call(this, $(container).attr('id'), $(container).find('#formUrl').val(), $(container).find('#json').val(), $(container).find('#nonce').val(), $(container).attr('id')+"_edit", "{rowId:'"+$(row).attr('id')+"'}", $(row).find('textarea:not(.formgrid-editor)').val(), $(container).find('#height').val(), $(container).find('#width').val());
         },
 
         duplicate: function() {
@@ -135,7 +135,7 @@
                 var uniqueKey = $(container).find('.uniqueKey').val();
 
                 // Ambil isi JSON dari textarea dalam row
-                var json = $(row).find("textarea").val();
+                var json = $(row).find("textarea:not(.formgrid-editor)").val();
                 if (!json) {
                     return;
                 }
@@ -305,7 +305,11 @@
                         if (args.rowId && $(this).closest("tr").attr("id") == args.rowId) return true;
 
                         // Cek Kesamaan (Case Insensitive)
-                        if ($.trim($(this).text()).toLowerCase() == String(uniqueVal).toLowerCase()) {
+                        var storedValue = $(this).text();
+                        try {
+                            storedValue = JSON.parse($(this).closest("tr").find("textarea:not(.formgrid-editor)").first().val())[uniqueKey];
+                        } catch (e) {}
+                        if ($.trim(String(storedValue == null ? "" : storedValue)).toLowerCase() == String(uniqueVal).toLowerCase()) {
                             okToInsert = false;
 
                             // === LOGIC GANTI MESSAGE {column} ===
@@ -681,9 +685,10 @@
                     $(this).html(value);
                 }
             });
-            $(row).find('textarea').each(function(){
+            $(row).find('textarea:not(.formgrid-editor)').each(function(){
                 $(this).val(json);
             });
+            $(element).triggerHandler('formgrid:rowupdated', [row]);
         },
 
         getDateFormat: function(format) {
@@ -699,7 +704,7 @@
             var id = $(row).closest("table").parent().attr('id');
 
             $(row).attr("id", id+"_row_"+rowIndex);
-            $(row).find("textarea").each(function(){
+            $(row).find("textarea:not(.formgrid-editor)").each(function(){
                 $(this).attr("name", $(this).attr("id")+"_"+rowIndex);
             });
 

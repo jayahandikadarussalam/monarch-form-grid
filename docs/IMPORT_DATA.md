@@ -4,7 +4,7 @@ Tersedia mulai versi **2.1.0** untuk class `com.monarch.shadow.lib.FormGridCusto
 
 ## Mengaktifkan dan memakai
 
-1. Unggah `target/monarch-shadow-form-grid-2.2.2.jar` ke Manage Plugins.
+1. Unggah `target/monarch-shadow-form-grid-2.3.0.jar` ke Manage Plugins.
 2. Buka properti **Shadow Form Grid**, lalu tab **Import Data** dan centang **Enable Excel / CSV Import**.
 3. Pastikan **Form** dan **Columns** sudah dikonfigurasi. Simpan form dan buka ulang halaman form. Preview dimulai dengan 10 baris per halaman; pengguna dapat mengubahnya langsung melalui **Rows per page** (10–100 dengan kelipatan 10).
 4. Klik **Import Excel / CSV**. **Download Excel Template** menghasilkan file `.xlsx` dengan sheet `Import_Data` dan header sesuai Field ID serta urutan Columns grid tersebut. Setelah developer mengubah Columns dan menyimpan form, buka ulang halaman form untuk mengunduh template terbaru. File dibuat di browser menggunakan library yang disertakan dalam plugin.

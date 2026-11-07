@@ -1,4 +1,27 @@
 /* Let the active Joget theme supply colors, typography, borders and buttons. */
+.formgrid-custom .formgrid-editable-cell { display: block; min-width: 120px; }
+.grid.formgrid-custom .formgrid-editor {
+    display: block;
+    box-sizing: border-box;
+    width: 100%;
+    min-width: 100px;
+    max-width: 100%;
+    min-height: 34px;
+    margin: 0;
+    padding: 5px 8px;
+    border: 1px solid transparent;
+    border-radius: 0;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+}
+.grid.formgrid-custom .formgrid-editor:hover { border-color: #cbd5e1; }
+.grid.formgrid-custom .formgrid-editor:focus { border-color: #3b82f6; outline: 1px solid #3b82f6; }
+.grid.formgrid-custom .formgrid-editor:disabled { opacity: 0.6; }
+.grid.formgrid-custom select.formgrid-editor { appearance: auto; }
+.grid.formgrid-custom textarea.formgrid-editor { resize: vertical; }
+.formgrid-custom .formgrid-editable-filenames { display: block; padding: 4px 8px; overflow-wrap: anywhere; font-size: 0.85em; }
+
 .grid.formgrid-custom > .formgrid-import-open,
 .grid.formgrid-custom .formgrid-import-panel .btn {
     display: inline-flex;

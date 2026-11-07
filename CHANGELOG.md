@@ -1,5 +1,13 @@
 # Changelog
 
+## [2.3.0] - 2026-11-06
+
+### Ditambahkan
+- Checkbox **Editable Form Grid** pada UI > Grid untuk mengaktifkan edit langsung di sel. Default nonaktif; tombol CRUD tetap tersedia.
+- Editor teks, textarea, pilihan tunggal/multi, tanggal biasa, dan File Upload bawaan Joget dengan sinkronisasi JSON serta validasi field saat submit.
+- Upload menggunakan nonce layanan Joget dan menunggu upload selesai sebelum tombol submit dapat dipakai.
+- Field read-only, sistem, tersembunyi, plugin khusus, dan date/time tingkat lanjut tetap memakai perilaku sebelumnya.
+
 ## [2.2.2] - 2026-11-06
 
 ### Diperbaiki

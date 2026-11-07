@@ -25,6 +25,10 @@ public class FormGridImportTemplateTest {
     }
 
     private String render(boolean enabled, boolean readonly, String previewPageSize) throws Exception {
+        return render(enabled, readonly, previewPageSize, false);
+    }
+
+    private String render(boolean enabled, boolean readonly, String previewPageSize, boolean editable) throws Exception {
         Configuration config = new Configuration();
         config.setTemplateExceptionHandler(TemplateExceptionHandler.RETHROW_HANDLER);
         Template template = new Template("FormGridCustom.ftl", new InputStreamReader(
@@ -47,6 +51,8 @@ public class FormGridImportTemplateTest {
         model.put("rows", Collections.emptyList());
         model.put("optionsJson", "{}");
         model.put("importEnabled", enabled);
+        model.put("editableEnabled", editable);
+        model.put("editableColumnsJson", "[{\"id\":\"name\",\"label\":\"Name & <Label>\",\"editor\":\"TextField\"}]");
         model.put("importLabels", new FormGridCustom().getImportLabels());
         model.put("importColumnsJson", "[{\"id\":\"name\",\"label\":\"Name & <Label>\",\"type\":\"text\"}]");
         StringWriter out = new StringWriter();
@@ -62,7 +68,7 @@ public class FormGridImportTemplateTest {
         assertTrue(html.contains("Name &amp; &lt;Label&gt;"));
         assertTrue(html.contains("accept=\".xlsx,.xls,.csv\""));
         assertTrue(html.contains("formgrid-import-confirm\" disabled"));
-        assertTrue(html.contains("vendor/xlsx.full.min.js?v=2.2.2"));
+        assertTrue(html.contains("vendor/xlsx.full.min.js?v=2.3.0"));
         assertTrue(html.contains("Download Excel Template"));
         assertFalse(html.contains("previewPageSize:"));
         assertTrue(html.contains("class=\"formgrid-import-pagination\""));
@@ -72,6 +78,17 @@ public class FormGridImportTemplateTest {
         assertFalse(html.contains("@@form.formgrid.import."));
         assertTrue(html.contains("aria-expanded=\"false\""));
         assertTrue(html.contains("formgrid-import-footer"));
+    }
+
+    @Test
+    public void editableSchemaIsEscapedAndOptIn() throws Exception {
+        String enabled = render(false, false, null, true);
+        assertTrue(enabled.contains("grid.formGridEditable({"));
+        assertTrue(enabled.contains("class=\"formgrid-editable-columns\""));
+        assertTrue(enabled.contains("Name &amp; &lt;Label&gt;"));
+        String disabled = render(false, false);
+        assertFalse(disabled.contains("grid.formGridEditable({"));
+        assertFalse(disabled.contains("class=\"formgrid-editable-columns\""));
     }
 
     @Test

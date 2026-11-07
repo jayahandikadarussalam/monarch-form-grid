@@ -20,7 +20,7 @@
     }
     function existingRows(grid) {
         return grid.children("table").find("tr.grid-row:not(.grid-row-template)").map(function() {
-            return JSON.parse($(this).find("textarea").first().val());
+            return JSON.parse($(this).find("textarea:not(.formgrid-editor)").first().val());
         }).get();
     }
     function validate(grid, batch) {
