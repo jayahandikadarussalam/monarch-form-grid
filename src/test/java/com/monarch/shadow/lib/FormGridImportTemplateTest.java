@@ -50,7 +50,7 @@ public class FormGridImportTemplateTest {
         Map<String, Object> props = new HashMap<>();
         props.put("elementUniqueKey", "test");
         props.put("id", "items");
-        props.put("label", "Example Grid");
+        props.put("label", "Example Grid & \"quoted\" <label>");
         props.put("readonly", readonly ? "true" : "");
         props.put("enableSorting", sorting);
         props.put("showRowNumber", rowNumbers);
@@ -80,6 +80,12 @@ public class FormGridImportTemplateTest {
         StringWriter out = new StringWriter();
         template.process(model, out);
         return out.toString();
+    }
+
+    @Test
+    public void sourceLabelMetadataIsEscapedDisabledAndNotSubmitted() throws Exception {
+        String html = render(false, false);
+        assertTrue(html.contains("<input type=\"hidden\" disabled=\"disabled\" class=\"formgrid-field-label\" value=\"Example Grid &amp; &quot;quoted&quot; &lt;label&gt;\">"));
     }
 
     @Test

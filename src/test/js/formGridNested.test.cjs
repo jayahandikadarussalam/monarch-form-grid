@@ -7,7 +7,7 @@ const jquery = require('jquery');
 const base = path.join(__dirname, '../../main/resources/resources/js');
 function fixture(id) {
     return `<div class="form-cell"><div id="grid_${id}" name="${id}" class="formgrid-custom">
-      <input disabled class="formgrid-field-id" value="${id}"><input disabled id="formUrl" value="/form?embed=true">
+      <input disabled class="formgrid-field-id" value="${id}"><input disabled class="formgrid-field-label"><input disabled id="formUrl" value="/form?embed=true">
       <input disabled id="height" value="500"><input disabled id="width" value="900"><input disabled id="json" value="signed"><input disabled id="nonce" value="nonce">
       <input disabled id="validateMaxRow"><input disabled id="deleteMessage" value="Delete row?">
       <div class="grid-validation-error" style="display:none"><span class="error-content"></span></div>
@@ -41,6 +41,31 @@ function setup(relations = [{gridId:'areas',foreignKey:'parentId'},{gridId:'type
     const data=row=>JSON.parse(row.find('textarea:not(.formgrid-editor)').first().val());
     return {dom,window,$,grid,add,first,second,area,popups,expand,data};
 }
+test('nested headings and pager names follow source grid Labels instead of legacy relation labels at every level', t=>{
+    const s=setup([{gridId:'areas',foreignKey:'parentId',label:'Old Area'},
+        {gridId:'types',parentGridId:'areas',foreignKey:'parentId',label:'Old Type'}],{seed({grid}){
+        grid('areas').children('.formgrid-field-label').val('Area & <b>Updated</b>');
+        grid('types').children('.formgrid-field-label').val('Equipment Group');
+    }});t.after(()=>s.dom.window.close());
+    s.expand(s.first);
+    const detail=s.first.next();
+    assert.equal(detail.find('.formgrid-nested-heading strong').first().text(),'Area & <b>Updated</b>');
+    assert.equal(detail.find('.formgrid-nested-heading b').length,0);
+    assert.equal(detail.find('.formgrid-nested-pagination').first().attr('aria-label'),'Area & <b>Updated</b> pagination');
+    detail.find('.formgrid-nested-toggle').first().trigger('click');
+    assert.deepEqual(s.first.next().find('.formgrid-nested-heading strong').map(function(){return s.$(this).text();}).get(),
+        ['Area & <b>Updated</b>','Equipment Group']);
+    assert.doesNotMatch(s.first.next().text(),/Old Area|Old Type/);
+});
+test('blank or missing source Labels fall back to Child Grid ID and ignore legacy overrides', t=>{
+    const s=setup([{gridId:'areas',foreignKey:'parentId',label:'Old Area'},
+        {gridId:'types',parentGridId:'areas',foreignKey:'parentId',label:'Old Type'}],{seed({grid}){
+        grid('areas').children('.formgrid-field-label').val('  ');
+        grid('types').children('.formgrid-field-label').remove();
+    }});t.after(()=>s.dom.window.close());
+    s.expand(s.first);s.first.next().find('.formgrid-nested-toggle').first().trigger('click');
+    assert.deepEqual(s.first.next().find('.formgrid-nested-heading strong').map(function(){return s.$(this).text();}).get(),['areas','types']);
+});
 test('recursive views match foreign keys and keep canonical submitted data isolated', t=>{
     const s=setup(); t.after(()=>s.dom.window.close());
     s.expand(s.first);

@@ -96,7 +96,7 @@ public class FormGridNestedTest {
         config.put("formDefId", "areass");
         root.setProperty("nestedChildren", new Object[]{config});
         JSONArray schema = new JSONArray(root.getNestedRelationsJson());
-        assertEquals("Areas <script> & \"quotes\"", schema.getJSONObject(0).getString("label"));
+        assertFalse(schema.getJSONObject(0).has("label"));
         assertFalse(schema.getJSONObject(0).has("sql"));
         assertEquals("", schema.getJSONObject(0).getString("parentKey"));
         assertEquals("true", schema.getJSONObject(0).getString("sortWithButtons"));

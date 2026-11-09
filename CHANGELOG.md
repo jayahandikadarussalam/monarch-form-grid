@@ -1,5 +1,17 @@
 # Changelog
 
+## [2.15.2] - 2026-11-09
+
+### Diubah
+- Judul setiap nested subgrid otomatis mengikuti Label pada child Form Grid yang dipetakan lewat Child Grid ID. Label kosong memakai Child Grid ID sebagai judul.
+- Subgrid Label disembunyikan dari pengaturan nested dan nilai override lama diabaikan. Slot CSV lama tetap dipertahankan agar mapping tidak bergeser.
+
+## [2.15.1] - 2026-11-09
+
+### Diperbaiki
+- Label Child Tables / Subgrids menggunakan markup property-label native Joget dan mewarisi warna teks tema, sehingga tetap terbaca pada light maupun dark mode.
+- Ikon Open Item In Builder mengikuti warna teks tema.
+
 ## [2.15.0] - 2026-11-09
 
 ### Ditambahkan

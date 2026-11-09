@@ -1,6 +1,6 @@
 # Dynamic nested subgrids
 
-Version 2.15.0 provides optional expandable parent/child views. Nesting is disabled by default. Configure the complete hierarchy on one root Shadow Form Grid; additional tables and levels require Form Builder configuration, without rebuilding the plugin.
+Version 2.15.2 provides optional expandable parent/child views. Nesting is disabled by default. Configure the complete hierarchy on one root Shadow Form Grid; additional tables and levels require Form Builder configuration, without rebuilding the plugin.
 
 ## Form Builder setup
 
@@ -8,17 +8,17 @@ Version 2.15.0 provides optional expandable parent/child views. Nesting is disab
 2. Place six Shadow Form Grid elements in the **same containing form / subform scope**, with IDs `plants`, `areas`, `equipmentGroups`, `equipmentTypes`, `tags`, and `parameters`. Configure Columns and load/store binders on each grid. Select its corresponding Child Form ID in the root grid's nested relation row. Field IDs must be unique within that scope. Keep **Enable Nested Subgrids** off on every child grid.
 3. On `plants`, open **Nested Subgrids**, check **Enable Nested Subgrids**, and fill **Child Tables / Subgrids**:
 
-| Child Grid ID | Child Form ID | Subgrid Label | Parent Grid ID | Parent Key Field | Child Foreign Key Field |
-| --- | --- | --- | --- | --- | --- |
-| areas | areaForm | Areas | *(empty)* | id | plantId |
-| equipmentGroups | equipmentGroupForm | Equipment Groups | areas | id | areaId |
-| equipmentTypes | equipmentTypeForm | Equipment Types | equipmentGroups | id | equipmentGroupId |
-| tags | tagForm | Tags | equipmentTypes | id | equipmentTypeId |
-| parameters | parameterForm | Parameters | tags | id | tagId |
+| Child Grid ID | Child Form ID | Parent Grid ID | Parent Key Field | Child Foreign Key Field |
+| --- | --- | --- | --- | --- |
+| areas | areaForm | *(empty)* | id | plantId |
+| equipmentGroups | equipmentGroupForm | areas | id | areaId |
+| equipmentTypes | equipmentTypeForm | equipmentGroups | id | equipmentGroupId |
+| tags | tagForm | equipmentTypes | id | equipmentTypeId |
+| parameters | parameterForm | tags | id | tagId |
 
 The root grid is the default parent when Parent Grid ID is empty. Parent Key Field defaults to `id`. You can instead use a stable, non-empty, unique field from the parent Form. Use Form Field IDs, without the database `c_` prefix. Definition order does not matter. Multiple children can reference the same parent grid to create branches.
 
-The child Form's configured table determines the database table. Child Grid ID identifies a **Form Grid element**, not a Form Definition ID or SQL table name. Configure the foreign key field in the child Form even if it is omitted from visible Columns. Configure display columns in **Columns** on each child grid.
+The child Form's configured table determines the database table. Child Grid ID identifies a **Form Grid element**, not a Form Definition ID or SQL table name. Configure the foreign key field in the child Form even if it is omitted from visible Columns. Configure display columns in **Columns** on each child grid. The nested title automatically follows **Label** on that child Form Grid (not the child Form's name). A blank Label falls back to Child Grid ID. There is no separate Subgrid Label setting; legacy relation labels are ignored. Save the Builder and reload the containing form after changing a grid Label.
 
 ## Configure display columns on each child grid
 
@@ -43,13 +43,13 @@ The referenced child grid must still exist in the same containing form. Selectin
 For the supplied Area example, the CSV column order is:
 
 ```text
-Child Grid ID;Child Form ID;Subgrid Label;Parent Grid ID;Parent Key Field;Child Foreign Key Field;Sort with Buttons;Sort Field;Duplicate;Disable Duplicate
+Child Grid ID;Child Form ID;Legacy label (unused);Parent Grid ID;Parent Key Field;Child Foreign Key Field;Sort with Buttons;Sort Field;Duplicate;Disable Duplicate
 ```
 
-Paste this row into the property grid's CSV input:
+The third CSV slot is retained only for compatibility with older mappings and is ignored. Leave it empty in new mappings. Paste this row into the property grid's CSV input:
 
 ```text
-areasGrid;areass;Areas;;id;parentid;true;sort;true;false
+areasGrid;areass;;;id;parentid;true;sort;true;false
 ```
 
 ## Independent nested properties and duplication popups
@@ -65,8 +65,8 @@ Configure actions separately for every relation in **Nested Subgrids → Child T
 
 Each child configuration is displayed as two rows on a wide properties panel:
 
-- Top: Child Grid ID, Child Form ID, Subgrid Label, Parent Grid ID, Parent Key Field.
-- Bottom: Child Foreign Key Field, Sort with Buttons checkbox, conditional Sort Field, Disable Duplicate checkbox, and conditional Duplicate dropdown. Native move/delete controls sit in the right gutter.
+- Top: Child Grid ID, Child Form ID, Parent Grid ID, Parent Key Field, Child Foreign Key Field.
+- Bottom: Sort with Buttons checkbox, conditional Sort Field, Disable Duplicate checkbox, and conditional Duplicate dropdown. Native move/delete controls sit in the right gutter.
 
 The fields wrap further when the properties panel is narrow. The native Form dropdown, required-field validation, Add/Move/Delete controls and CSV input remain available. Unchecking Sort with Buttons hides Sort Field without clearing its value. Each row controls its own visibility, including rows added or loaded through CSV.
 

@@ -5,19 +5,22 @@
         '.monarch-nested-properties{container-type:inline-size}',
         '.monarch-nested-properties table{display:block;width:100%;border-collapse:separate}',
         '.monarch-nested-properties table>tbody{display:block}',
+        '.monarch-nested-properties table,.monarch-nested-properties tbody,.monarch-nested-properties tr,.monarch-nested-properties td{color:inherit}',
         '.monarch-nested-properties tr.grid_header,.monarch-nested-properties tr.grid_model{display:none!important}',
         '.monarch-nested-properties tr:not(.grid_header):not(.grid_model){display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px 16px;padding:16px;margin:0 0 14px;border:1px solid #e0e0e0;border-radius:4px;background:transparent}',
         '.monarch-nested-columns-properties tr:not(.grid_header):not(.grid_model){grid-template-columns:repeat(4,minmax(0,1fr))}',
         '.monarch-nested-relations-properties tr:not(.grid_header):not(.grid_model){position:relative;padding-right:64px}',
         '.monarch-nested-properties tr>td{display:block;width:auto!important;min-width:0;padding:0!important;border:0!important;vertical-align:top;box-sizing:border-box}',
         '.monarch-nested-properties tr>td.monarch-nested-sort-hidden{display:none!important}',
+        '.monarch-nested-properties tr>td.monarch-nested-legacy-label{display:none!important}',
         '.monarch-nested-properties tr>td.monarch-nested-duplicate-hidden{display:none!important}',
         '.monarch-nested-properties tr>td.monarch-nested-duplicate-mode{order:1}',
         '.monarch-nested-properties tr>td>span{display:block;min-width:0}',
-        '.monarch-nested-properties .monarch-nested-field-label{display:block;margin-bottom:7px;font-weight:600;line-height:1.4;min-height:1.4em;white-space:normal}',
+        '.monarch-nested-properties .monarch-nested-label-container{display:block;float:none;width:auto;margin:0;padding:0}',
+        '.monarch-nested-properties .monarch-nested-field-label{display:block;margin:0 0 7px;padding:0;font-weight:600;line-height:1.4;min-height:1.4em;white-space:normal}',
         '.monarch-nested-properties input:not([type=checkbox]),.monarch-nested-properties select,.monarch-nested-properties .chosen-container{width:100%!important;min-width:0;max-width:100%;box-sizing:border-box}',
         '.monarch-nested-properties .monarch-nested-form-control{position:relative;padding-right:28px;box-sizing:border-box}',
-        '.monarch-nested-properties .monarch-nested-open-builder{position:absolute;right:4px;top:50%;transform:translateY(-50%);color:#6c757d}',
+        '.monarch-nested-properties .monarch-nested-open-builder{position:absolute;right:4px;top:50%;transform:translateY(-50%);color:inherit}',
         '.monarch-nested-properties .monarch-nested-open-builder:focus-visible{outline:2px solid currentColor;outline-offset:3px}',
         '.monarch-nested-properties .property-type-grid-action-column{align-self:end;text-align:right;white-space:nowrap;padding-bottom:5px!important}',
         '.monarch-nested-relations-properties .property-type-grid-action-column{position:absolute;right:12px;bottom:16px;display:flex;flex-direction:column;align-items:center;gap:6px}',
@@ -207,10 +210,22 @@
                         if (!input.length) return;
                         var definition = columns && columns[index];
                         var label = definition ? definition.label : header.eq(index).clone().find('i,a,button').remove().end().text().replace(/\s+/g, ' ').trim();
-                        if (!cell.children('.monarch-nested-field-label').length) {
-                            var caption = $('<div class="monarch-nested-field-label">').text(label);
+                        // Keep the unused CSV slot so older positional mappings do not shift their keys.
+                        if (name === 'nestedChildren' && input.attr('name') === 'label') {
+                            input.attr({type: 'hidden', 'aria-label': label});
+                            cell.addClass('monarch-nested-legacy-label');
+                            return;
+                        }
+                        var caption = cell.find('.monarch-nested-field-label').first();
+                        if (!caption.length) {
+                            caption = $('<div class="monarch-nested-field-label">').text(label);
                             if (definition && String(definition.required).toLowerCase() === 'true') caption.append(' ', $('<span class="property-required">').text('*'));
                             cell.prepend(caption);
+                        }
+                        // Native label markup follows Joget's current light/dark theme automatically.
+                        caption.addClass('property-label');
+                        if (!caption.parent().hasClass('monarch-nested-label-container')) {
+                            caption.wrap('<div class="property-label-container monarch-nested-label-container"></div>');
                         }
                         input.attr('aria-label', label);
                         if (name === 'nestedChildren' && input.is('select[name="formDefId"]')) updateBuilderLink(input);

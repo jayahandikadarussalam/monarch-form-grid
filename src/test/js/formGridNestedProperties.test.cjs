@@ -63,7 +63,7 @@ test('the native grid is laid out in two rows, with labeled fields and no change
     const data=s.table.find('tr').not('.grid_header,.grid_model').first();
     assert.deepEqual(values(data),first);
     assert.equal(data.children('td').length,11);
-    assert.equal(data.find('.monarch-nested-field-label').length,10);
+    assert.equal(data.find('.monarch-nested-field-label').length,9);
     assert.equal(s.table.closest('.property-editor-property').hasClass('monarch-nested-properties'),true);
     assert.equal(s.$('#unrelated .monarch-nested-properties').length,0);
     assert.match(s.helper.renderField(),/grid-template-columns:repeat\(5,minmax\(0,1fr\)\)/);
@@ -90,7 +90,9 @@ test('adding a native model row and loading Form options retain one label per co
     const control=added.find('[name="formDefId"]')[0];
     added.find('[name="formDefId"]').append('<option value="other">Other Form</option>');
     await new Promise(resolve=>setTimeout(resolve,0));
-    assert.equal(added.find('.monarch-nested-field-label').length,10);
+    assert.equal(added.find('.monarch-nested-field-label').length,9);
+    assert.equal(added.find('[name="label"]').attr('type'),'hidden');
+    assert.equal(added.find('[name="label"]').closest('td').css('display'),'none');
     assert.equal(added.find('[name="enableDuplicate"]').val(),'false');
     assert.equal(added.find('[name="sortWithButtons"]').prop('checked'),false);
     assert.equal(added.find('[name="formDefId"]')[0],control);
@@ -102,12 +104,25 @@ test('the layout also applies after a native CSV switch recreates the table',asy
     const replacement=s.$(`<table id="editor_nestedChildren"><tbody><tr class="grid_header">${definition.columns.map(c=>`<th>${c.label}</th>`).join('')}<th></th></tr>${row(first)}</tbody></table>`).prependTo(input);
     await new Promise(resolve=>setTimeout(resolve,0));
     const restored=replacement.find('tr').not('.grid_header').first();
-    assert.equal(restored.find('.monarch-nested-field-label').length,10);assert.deepEqual(values(restored),first);
+    assert.equal(restored.find('.monarch-nested-field-label').length,9);assert.deepEqual(values(restored),first);
+    assert.equal(restored.find('[name="label"]').attr('type'),'hidden');
+    assert.equal(restored.find('[name="label"]').closest('td').css('display'),'none');
+});
+test('legacy Subgrid Label is hidden while retaining the CSV slot and stored mapping',t=>{
+    const s=setup();t.after(s.close);
+    for(const data of [savedRow(s),s.table.find('.grid_model')]) {
+        const legacy=data.find('[name="label"]');
+        assert.equal(legacy.attr('type'),'hidden');
+        assert.equal(legacy.closest('td').css('display'),'none');
+        assert.equal(legacy.closest('td').find('.monarch-nested-field-label').length,0);
+    }
+    assert.deepEqual(values(savedRow(s)),first);
+    assert.deepEqual(savedRow(s).find('input[name],select[name]').map(function(){return this.name;}).get(),definition.columns.map(c=>c.key));
 });
 test('the presentation helper is versioned and leaves native grid, Form AJAX, and CSV column order intact',()=>{
     assert.equal(definition.type,'grid');
     const helper=properties.find(p=>p.name==='nestedPropertiesLayout');
-    assert.equal(helper.type,'custom');assert.match(helper.script_url,/formGridNestedProperties\.js\?v=2\.15\.0$/);
+    assert.equal(helper.type,'custom');assert.match(helper.script_url,/formGridNestedProperties\.js\?v=2\.15\.2$/);
     assert.equal(definition.columns.find(c=>c.key==='formDefId').type,'selectbox');
     assert.equal(definition.columns.map(c=>first[c.key]).join(';'),'areasGrid;areass;Areas;;id;parentid;true;sort;false;false');
 });

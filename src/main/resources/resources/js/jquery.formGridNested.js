@@ -41,7 +41,7 @@
                 if (!relations.length) throw new Error('Add at least one child grid in Child Tables / Subgrids.');
                 relations.forEach(function(config) {
                     var node = {
-                        gridId: text(config.gridId).trim(), formDefId: text(config.formDefId).trim(), label: text(config.label).trim(),
+                        gridId: text(config.gridId).trim(), formDefId: text(config.formDefId).trim(),
                         parentGridId: text(config.parentGridId).trim() || rootId,
                         parentKey: text(config.parentKey).trim() || 'id', foreignKey: text(config.foreignKey).trim(),
                         sortWithButtons: text(config.sortWithButtons).trim() || 'false',
@@ -61,6 +61,7 @@
                     node.grid = findGrid(node.gridId);
                     if (node.grid.length !== 1) throw new Error('Child Grid ID must identify one Shadow Form Grid in the same form: ' + node.gridId +
                         '. Add a Shadow Form Grid element with this ID; select its Form separately using Child Form ID.');
+                    node.label = text(node.grid.children('.formgrid-field-label').val()).trim() || node.gridId;
                     if (node.formDefId && node.grid.children('.formgrid-form-id').val() !== node.formDefId)
                         throw new Error('Child Form ID mismatch for ' + node.gridId + ': expected ' + node.formDefId +
                             '. Save the nested mapping and reload the containing form.');

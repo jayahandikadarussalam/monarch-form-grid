@@ -117,7 +117,7 @@
       {
         "name": "nestedChildren",
         "label": "Child Tables / Subgrids",
-        "description": "Child Grid ID identifies a Shadow Form Grid element in this containing form (for example areasGrid). Child Form ID selects the actual child Form (for example areass / Area), which supplies its table and popup. Configure display columns in the referenced child grid's Columns setting. The referenced grid supplies Columns and binders; binder formDefId follows this selection when supported. Configure nested actions independently. Leave Parent Grid ID empty for a direct child. Use Form Field IDs without c_.",
+        "description": "Child Grid ID identifies a Shadow Form Grid element in this containing form (for example areasGrid). Child Form ID selects the actual child Form (for example areass / Area), which supplies its table and popup. The nested title follows the referenced child grid's Label; a blank Label falls back to Child Grid ID. Configure display columns in the referenced child grid's Columns setting. The referenced grid supplies Columns and binders; binder formDefId follows this selection when supported. Configure nested actions independently. Leave Parent Grid ID empty for a direct child. Use Form Field IDs without c_.",
         "type": "grid",
         "control_field": "enableNested",
         "control_value": "true",
@@ -127,7 +127,7 @@
             "key": "formDefId", "label": "Child Form ID", "type": "selectbox", "required": "True",
             "options_ajax": "[CONTEXT_PATH]/web/json/console/app[APP_PATH]/forms/options"
           },
-          {"key": "label", "label": "Subgrid Label"},
+          {"key": "label", "label": "Legacy label (unused)"},
           {"key": "parentGridId", "label": "Parent Grid ID"},
           {"key": "parentKey", "label": "Parent Key Field", "value": "id", "type": "autocomplete", "options": []},
           {"key": "foreignKey", "label": "Child Foreign Key Field", "required": "True", "type": "autocomplete", "options": []},
@@ -149,7 +149,7 @@
       {
         "name": "nestedPropertiesLayout",
         "type": "custom",
-        "script_url": "[CONTEXT_PATH]/plugin/com.monarch.shadow.lib.FormGridCustom/js/formGridNestedProperties.js?v=2.15.0",
+        "script_url": "[CONTEXT_PATH]/plugin/com.monarch.shadow.lib.FormGridCustom/js/formGridNestedProperties.js?v=2.15.2",
         "field_options_url": "[CONTEXT_PATH]/web/json/console/app[APP_PATH]/form/columns/options"
       }
     ]

@@ -46,7 +46,7 @@ import org.joget.plugin.base.PluginWebSupport;
 
 public class FormGridCustom extends Element implements FormBuilderPaletteElement, FormContainer, GridInnerDataRetriever, PwaOfflineResources, PwaOfflineReadonly, PluginWebSupport {
     private static final String MESSAGE_PATH = "messages/FormGridCustom";
-    private static final String VERSION = "2.15.0";
+    private static final String VERSION = "2.15.2";
 
     protected Map<FormData, FormRowSet> cachedRowSet = new HashMap<>();
     protected Map<String, FormData> formDatas = new HashMap<>();
@@ -696,7 +696,7 @@ public class FormGridCustom extends Element implements FormBuilderPaletteElement
                 if (!(item instanceof Map)) continue;
                 Map<?, ?> values = (Map<?, ?>) item;
                 JSONObject relation = new JSONObject();
-                for (String key : Arrays.asList("gridId", "formDefId", "label", "parentGridId", "parentKey", "foreignKey", "sortWithButtons", "sortField", "enableDuplicate", "disabledDuplicate")) {
+                for (String key : Arrays.asList("gridId", "formDefId", "parentGridId", "parentKey", "foreignKey", "sortWithButtons", "sortField", "enableDuplicate", "disabledDuplicate")) {
                     Object value = values.get(key);
                     String setting = value == null ? "" : value.toString().trim();
                     if (setting.isEmpty()) {
