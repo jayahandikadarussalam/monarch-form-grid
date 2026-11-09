@@ -16,6 +16,9 @@
         '.monarch-nested-properties tr>td>span{display:block;min-width:0}',
         '.monarch-nested-properties .monarch-nested-field-label{display:block;margin-bottom:7px;font-weight:600;line-height:1.4;min-height:1.4em;white-space:normal}',
         '.monarch-nested-properties input:not([type=checkbox]),.monarch-nested-properties select,.monarch-nested-properties .chosen-container{width:100%!important;min-width:0;max-width:100%;box-sizing:border-box}',
+        '.monarch-nested-properties .monarch-nested-form-control{position:relative;padding-right:28px;box-sizing:border-box}',
+        '.monarch-nested-properties .monarch-nested-open-builder{position:absolute;right:4px;top:50%;transform:translateY(-50%);color:#6c757d}',
+        '.monarch-nested-properties .monarch-nested-open-builder:focus-visible{outline:2px solid currentColor;outline-offset:3px}',
         '.monarch-nested-properties .property-type-grid-action-column{align-self:end;text-align:right;white-space:nowrap;padding-bottom:5px!important}',
         '.monarch-nested-relations-properties .property-type-grid-action-column{position:absolute;right:12px;bottom:16px;display:flex;flex-direction:column;align-items:center;gap:6px}',
         '@container (max-width:720px){.monarch-nested-properties tr:not(.grid_header):not(.grid_model){grid-template-columns:repeat(3,minmax(0,1fr))}}',
@@ -44,6 +47,9 @@
             var eventNamespace = '.monarchNestedFields_' + helper.id.replace(/[^a-zA-Z0-9]/g, '_');
             $(editor).off(eventNamespace).on('change' + eventNamespace, function(event) {
                 var target = $(event.target);
+                if (target.is('select[name="formDefId"]') && target.closest('table')[0] === document.getElementById(targetId)) {
+                    updateBuilderLink(target);
+                }
                 if (['sortWithButtons', 'disabledDuplicate'].indexOf(target.attr('name')) !== -1 &&
                         target.closest('table')[0] === document.getElementById(targetId)) {
                     updateConditionalFields(target.closest('tr'));
@@ -80,6 +86,21 @@
                 if (!field) return '';
                 var raw = field.getData ? field.getData(false)[name] : field.value;
                 return raw == null ? '' : String(raw).trim();
+            }
+            function updateBuilderLink(input) {
+                if (!options.appPath || input.closest('tr').hasClass('grid_model')) return;
+                var control = input.parent(), link = control.children('.monarch-nested-open-builder');
+                if (!link.length) {
+                    link = $('<a class="monarch-nested-open-builder" target="_blank" rel="noopener noreferrer" title="Open Item In Builder" aria-label="Open Item In Builder">')
+                        .append('<i class="fas fa-external-link-alt" aria-hidden="true"></i>').appendTo(control);
+                }
+                var formId = value(input);
+                control.toggleClass('monarch-nested-form-control', !!formId);
+                if (formId) {
+                    link.attr('href', (options.contextPath || '') + '/web/console/app' + options.appPath + '/form/builder/' + encodeURIComponent(formId)).show();
+                } else {
+                    link.removeAttr('href').hide();
+                }
             }
             function sourceForm(row, key) {
                 if (row.closest('table')[0] === document.getElementById(columnsId)) {
@@ -192,6 +213,7 @@
                             cell.prepend(caption);
                         }
                         input.attr('aria-label', label);
+                        if (name === 'nestedChildren' && input.is('select[name="formDefId"]')) updateBuilderLink(input);
                         if (!isModel) autocomplete(input, row);
                         // The native grid clones its model HTML for new rows. Seed checkbox defaults there.
                         if (isModel && input.is('[type=checkbox]') && definition && definition.value !== undefined) {

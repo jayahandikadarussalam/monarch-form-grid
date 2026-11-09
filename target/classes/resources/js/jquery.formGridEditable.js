@@ -42,6 +42,7 @@
 
             function error(message) {
                 grid.children('.grid-validation-error').show().find('.error-content').text(message);
+                grid.triggerHandler('formgrid:validationerror');
             }
             function commit(row, column, value, paths) {
                 if (!writable(grid)) return false;
@@ -68,7 +69,7 @@
                 jsonField(row).val(json);
                 row.data('editableJson', json);
                 grid.children('.grid-validation-error').hide();
-                grid.trigger('change');
+                grid.trigger('change', [{editableRow: row[0], editableFile: !!paths}]);
                 return true;
             }
             function optionMap(column) {
@@ -101,7 +102,8 @@
                 $.getJSON(context + '/web/json/app/' + encodeURIComponent(source.OPTIONS_AJAX_APP_ID) + '/' + encodeURIComponent(source.OPTIONS_AJAX_APP_VERSION) + '/form/options', {
                     _dv: control, _n: source.OPTIONS_AJAX_NONCE, _bd: source.OPTIONS_AJAX_BINDER_DATA
                 }).done(function(list) {
-                    if (input.data('optionRequest') !== requestId || !$.contains(row[0], input[0])) return;
+                    var container = input.data('editableContainer');
+                    if (input.data('optionRequest') !== requestId || !container || !$.contains(container, input[0])) return;
                     var map = {};
                     list.forEach(function(option) { map[option.value] = option.label; });
                     var value = string(read(row)[column.id]);
@@ -163,14 +165,17 @@
                         input.val('').prop('disabled', !writable(grid)).removeAttr('aria-busy');
                     });
             }
-            function render(row, force) {
+            function render(row, force, target) {
+                var editorRow = target || row;
                 var json = jsonField(row).val();
-                if (!json || (!force && row.data('editableJson') === json)) return;
+                if (!json || (!force && editorRow.data('editableJson') === json)) return;
                 var data;
                 try { data = JSON.parse(json); } catch (e) { return; }
-                row.data('editableJson', json);
+                editorRow.data('editableJson', json);
                 columns.forEach(function(column) {
-                    var cell = row.find('span.grid-cell').filter(function() { return $(this).attr('column_key') === column.id; });
+                    var cell = target ? editorRow.find('[data-editable-field]').filter(function() {
+                        return $(this).attr('data-editable-field') === column.id;
+                    }) : row.find('span.grid-cell').filter(function() { return $(this).attr('column_key') === column.id; });
                     if (!cell.length || !writable(grid)) return;
                     var value = string(data._decryptedDataMap && data._decryptedDataMap[column.id] !== undefined ? data._decryptedDataMap[column.id] : data[column.id]), input, codec;
                     if (column.editor === 'DatePicker') {
@@ -188,7 +193,8 @@
                         input.val(value);
                         if (Number(column.maxlength) > 0) input.attr('maxlength', column.maxlength);
                     }
-                    input.addClass('formgrid-editor').attr('aria-label', column.label || column.id).data('column', column);
+                    input.addClass('formgrid-editor').attr('aria-label', column.label || column.id)
+                        .data('column', column).data('editableContainer', editorRow[0]);
                     cell.empty().append(input).addClass('formgrid-editable-cell');
                     if (column.editor === 'FileUpload') {
                         var display = $('<span class="formgrid-editable-filenames">').text(value.split(';').join(', '));
@@ -202,7 +208,7 @@
                             if (commit(row, column, next)) {
                                 columns.forEach(function(dependent) {
                                     if (string((dependent.options || {}).OPTIONS_AJAX_CONTROL_FIELD).split(';').map(function(id) { return id.trim(); }).indexOf(column.id) !== -1) {
-                                        row.find('.formgrid-editor').filter(function() { return $(this).data('column').id === dependent.id; })
+                                        editorRow.find('.formgrid-editor').filter(function() { return $(this).data('column').id === dependent.id; })
                                             .each(function() { loadOptions(row, dependent, $(this), true); });
                                     }
                                 });
@@ -218,6 +224,8 @@
                     }
                 });
             }
+            // A nested view renders controls here while commits, validation and uploads use its canonical row.
+            grid.data('formGridEditableApi', {renderRow: function(source, view) { render(source, true, view); }});
             function refresh() { grid.children('table').find('tr.grid-row').each(function() { render($(this)); }); }
             grid.on('formgrid:rowupdated.formGridEditable', function(event, row) { render($(row), true); });
             grid.on('change.formGridEditable', refresh);

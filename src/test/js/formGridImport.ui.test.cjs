@@ -102,10 +102,10 @@ test('preview waits for confirmation, appends serializable rows, refreshes pagin
     assert.match(rows[0].id,/^[0-9a-f-]{36}$/);
     assert.equal(dataRows(grid).eq(0).find('textarea').attr('name'),'items_jsonrow_0');
     assert.equal(dataRows(grid).eq(1).attr('id'),'gridA_row_1');
-    assert.equal(grid.children('.pg-navigator').length,1);
-    assert.equal(grid.find('.pg-navigator').length,1);
-    assert.equal(grid.find('tr.pg-tr-show').length,1);
-    assert.equal(grid.find('tr.pg-tr-hide').length,1);
+    assert.equal(grid.children('.pg-navigator').length,0);
+    assert.equal(grid.find('.pg-navigator').length,0);
+    assert.equal(grid.find('tr.pg-tr-show').length,2);
+    assert.equal(grid.find('tr.pg-tr-hide').length,0);
     assert.equal(dataRows(grid).first().find('.grid-action-moveup').prop('disabled'),true);
     assert.match(grid.find('.formgrid-import-status').text(),/2 rows imported/);
     // A second import appends and preserves existing row identities and edited values.

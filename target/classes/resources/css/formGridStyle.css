@@ -1,4 +1,6 @@
 /* Let the active Joget theme supply colors, typography, borders and buttons. */
+.formgrid-builder-info { display: flex; flex-wrap: wrap; gap: 4px 16px; margin: 0 0 8px; font-size: 12px; color: #6b7280; }
+.formgrid-builder-info code { font-size: inherit; }
 .formgrid-custom .formgrid-editable-cell { display: block; min-width: 120px; }
 .grid.formgrid-custom .formgrid-editor {
     display: block;
@@ -23,6 +25,7 @@
 .formgrid-custom .formgrid-editable-filenames { display: block; padding: 4px 8px; overflow-wrap: anywhere; font-size: 0.85em; }
 
 .grid.formgrid-custom > .formgrid-import-open,
+.grid.formgrid-custom .formgrid-nested-heading-actions > .formgrid-import-open,
 .grid.formgrid-custom .formgrid-import-panel .btn {
     display: inline-flex;
     align-items: center;
@@ -40,6 +43,12 @@
     position: static;
 }
 .grid.formgrid-custom > .formgrid-import-open { margin-left: 8px; vertical-align: middle; }
+/* Keep Joget's table-to-action spacing when the small-table pager is absent. */
+.grid.formgrid-custom > .formgrid-custom-add,
+.grid.formgrid-custom > .formgrid-import-open {
+    margin-top: 24px;
+    vertical-align: middle;
+}
 .grid.formgrid-custom .formgrid-import-panel {
     margin-top: 12px;
     padding: 20px;
@@ -129,6 +138,7 @@
 .formgrid-custom > table {
     width: 100%;
 }
+.grid.formgrid-custom > table .formgrid-row-number { width: 1%; white-space: nowrap; text-align: center; }
 
 .formgrid-custom .td-checkbox .tablesaw-cell-label {
     display: none;
@@ -267,17 +277,45 @@
 .formgrid-nested-section { border-left: 3px solid #cbd5e1; padding-left: 12px; margin: 0 0 12px; }
 .formgrid-nested-section:last-child { margin-bottom: 0; }
 .formgrid-nested-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 8px; }
+.formgrid-nested-heading-actions { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 8px; }
+.grid.formgrid-custom .formgrid-nested-import > .formgrid-import-panel { margin: 4px 0 12px; }
+.grid.formgrid-custom.formgrid-nested .formgrid-nested-import .formgrid-import-preview-table th,
+.grid.formgrid-custom.formgrid-nested .formgrid-nested-import .formgrid-import-preview-table td { background: #fff !important; box-shadow: none !important; }
 .formgrid-nested-scroll { overflow-x: auto; }
 .formgrid-custom .formgrid-nested-table { width: 100%; border-collapse: collapse; background: #fff; }
 .formgrid-custom .formgrid-nested-table th,
 .formgrid-custom .formgrid-nested-table td { padding: 8px 10px; border: 1px solid #e2e8f0; vertical-align: top; }
+/* Theme hover rules can reach every descendant cell of an expanded row. */
+.grid.formgrid-custom.formgrid-nested > table > tbody > tr.formgrid-nested-root-detail,
+.grid.formgrid-custom.formgrid-nested > table > tbody > tr.formgrid-nested-root-detail > td,
+.grid.formgrid-custom.formgrid-nested .formgrid-nested-table > tbody > tr.formgrid-nested-detail,
+.grid.formgrid-custom.formgrid-nested .formgrid-nested-table > tbody > tr.formgrid-nested-detail > td {
+    background: #f8fafc !important;
+    box-shadow: none !important;
+}
+.grid.formgrid-custom.formgrid-nested .formgrid-nested-table,
+.grid.formgrid-custom.formgrid-nested .formgrid-nested-table > thead > tr,
+.grid.formgrid-custom.formgrid-nested .formgrid-nested-table > thead > tr > th,
+.grid.formgrid-custom.formgrid-nested .formgrid-nested-table > tbody > tr:not(.formgrid-nested-detail),
+.grid.formgrid-custom.formgrid-nested .formgrid-nested-table > tbody > tr:not(.formgrid-nested-detail) > td {
+    background: #fff !important;
+    box-shadow: none !important;
+}
+/* Highlight only this data row's direct cells, keeping sibling detail panels unchanged. */
+.grid.formgrid-custom.formgrid-nested .formgrid-nested-table > tbody > tr.formgrid-nested-row:hover > td {
+    background: #e9ecef !important;
+}
 .formgrid-custom .formgrid-nested-table .formgrid-nested-actions,
 .formgrid-custom .formgrid-nested-table .formgrid-nested-actions-header { width: 1%; white-space: nowrap; vertical-align: middle; }
 .formgrid-nested-empty { color: #64748b; text-align: center; }
 .formgrid-custom .formgrid-nested-row-number { width: 1%; white-space: nowrap; text-align: center; }
 .formgrid-nested-status:not([hidden]) { margin: 0 0 12px; }
-.formgrid-nested-pagination { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 8px 16px; margin-top: 10px; font-size: 13px; }
+.formgrid-nested-pagination { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 6px 10px; margin-top: 8px; font-size: 12px; }
 .formgrid-nested-pagination[hidden] { display: none; }
+.formgrid-nested-page-info, .formgrid-nested-page-size-label > span { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+.formgrid-custom > .pg-navigator { display: flex; justify-content: flex-end; align-items: center; gap: 6px; margin: 8px 0 0; font-size: 12px; }
+.formgrid-custom > .pg-navigator button { min-width: 28px; padding: 2px 7px; border: 1px solid #cbd5e1; border-radius: 4px; background: #fff; color: #334155; cursor: pointer; }
+.formgrid-custom > .pg-navigator button:disabled { opacity: .45; cursor: default; }
 .formgrid-nested-page-size-label, .formgrid-nested-page-actions { display: flex; align-items: center; gap: 8px; }
 .formgrid-custom .formgrid-nested-pagination select.formgrid-nested-page-size {
     -webkit-appearance: none;

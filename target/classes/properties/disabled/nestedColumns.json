@@ -1,0 +1,92 @@
+{
+  "name": "nestedColumns",
+  "label": "Nested Columns",
+  "description": "Choose a Child Grid ID from Child Tables / Subgrids, then configure its columns in display order. Field suggestions follow that child's selected Form. These columns override the child grid's Columns; leave a child without entries to use its existing Columns.",
+  "type": "grid",
+  "control_field": "enableNested",
+  "control_value": "true",
+  "columns": [
+    {
+      "key": "gridId",
+      "label": "Child Grid ID",
+      "type": "selectbox",
+      "options": [],
+      "required": "True"
+    },
+    {
+      "key": "value",
+      "label": "@@form.formgrid.fieldId@@",
+      "type": "autocomplete",
+      "required": "True",
+      "options": []
+    },
+    {
+      "key": "label",
+      "label": "@@form.formgrid.label@@"
+    },
+    {
+      "key": "formatType",
+      "label": "@@form.formgrid.formatType@@",
+      "options": [
+        {
+          "value": "text",
+          "label": "@@form.formgrid.formatType.text@@"
+        },
+        {
+          "value": "html",
+          "label": "@@form.formgrid.formatType.html@@"
+        },
+        {
+          "value": "nl2br",
+          "label": "@@form.formgrid.formatType.nl2br@@"
+        },
+        {
+          "value": "decimal",
+          "label": "@@form.formgrid.formatType.decimal@@"
+        },
+        {
+          "value": "currency",
+          "label": "@@form.formgrid.formatType.currency@@"
+        },
+        {
+          "value": "date",
+          "label": "@@form.formgrid.formatType.date@@"
+        },
+        {
+          "value": "file",
+          "label": "@@form.formgrid.formatType.file@@"
+        },
+        {
+          "value": "image",
+          "label": "@@form.formgrid.formatType.image@@"
+        },
+        {
+          "value": "options",
+          "label": "@@form.formgrid.formatType.options@@"
+        }
+      ]
+    },
+    {
+      "key": "format",
+      "label": "@@form.formgrid.format@@"
+    },
+    {
+      "key": "width",
+      "label": "@@form.formgrid.width@@"
+    },
+    {
+      "key": "visibility",
+      "label": "@@form.formgrid.visibility@@",
+      "options": [
+        {
+          "value": "yes",
+          "label": "@@form.formgrid.visibility.yes@@"
+        },
+        {
+          "value": "no",
+          "label": "@@form.formgrid.visibility.no@@"
+        }
+      ]
+    }
+  ]
+}

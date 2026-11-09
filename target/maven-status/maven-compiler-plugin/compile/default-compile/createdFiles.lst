@@ -1,3 +1,5 @@
 com/monarch/shadow/utils/Utils.class
 com/monarch/shadow/Activator.class
+com/monarch/shadow/lib/NestedLoadBinder.class
+com/monarch/shadow/lib/NestedLoadBinder$State.class
 com/monarch/shadow/lib/FormGridCustom.class

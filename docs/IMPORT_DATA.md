@@ -4,13 +4,15 @@ Tersedia mulai versi **2.1.0** untuk class `com.monarch.shadow.lib.FormGridCusto
 
 ## Mengaktifkan dan memakai
 
-1. Unggah `target/monarch-shadow-form-grid-2.3.0.jar` ke Manage Plugins.
+1. Unggah `target/monarch-shadow-form-grid-2.15.0.jar` ke Manage Plugins.
 2. Buka properti **Shadow Form Grid**, lalu tab **Import Data** dan centang **Enable Excel / CSV Import**.
 3. Pastikan **Form** dan **Columns** sudah dikonfigurasi. Simpan form dan buka ulang halaman form. Preview dimulai dengan 10 baris per halaman; pengguna dapat mengubahnya langsung melalui **Rows per page** (10, 20, 50, atau 100).
 4. Klik **Import Excel / CSV**. **Download Excel Template** menghasilkan file `.xlsx` dengan sheet `Import_Data` dan header sesuai Field ID serta urutan Columns grid tersebut. Setelah developer mengubah Columns dan menyimpan form, buka ulang halaman form untuk mengunduh template terbaru. File dibuat di browser menggunakan library yang disertakan dalam plugin.
 5. Pilih `.xlsx`, `.xls`, atau `.csv` UTF-8. Untuk workbook dengan beberapa sheet, pilih worksheet yang berisi data.
 6. Periksa pratinjau menggunakan **Previous/Next** dan **Rows per page** (10, 20, 50, atau 100). Klik **Import Rows** untuk menambahkan **seluruh batch** ke data yang sudah ada, termasuk baris pada halaman pratinjau lain.
 7. Submit/simpan form induk untuk menyimpan hasil melalui store binder grid yang dikonfigurasi.
+
+Mulai **2.15.0**, import juga tersedia di nested subgrid. Aktifkan opsi import pada elemen **child grid** masing-masing, lalu expand parent pada form runtime. Tombol **Import Excel / CSV** muncul di header child di samping Add. Template mengikuti Columns child dan tidak menyertakan FK parent maupun sort; hubungan ke parent diisi otomatis saat konfirmasi. Setiap parent memiliki preview terpisah. Lihat [pengaturan nested import](NESTED_GRID.md#import-into-a-nested-subgrid).
 
 Untuk Columns pada contoh (`name`, `select`, `date`, `file`), template Excel berisi header `name`, `select`, dan `date` pada baris pertama. Isi mulai baris kedua, misalnya:
 

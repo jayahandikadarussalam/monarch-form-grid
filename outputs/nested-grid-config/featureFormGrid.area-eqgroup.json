@@ -1,0 +1,489 @@
+{
+    "elements": [
+        {
+            "elements": [
+                {
+                    "elements": [
+                        {
+                            "className": "org.joget.plugin.enterprise.FormGrid",
+                            "properties": {
+                                "validateMaxRow": "",
+                                "deleteLabel": "",
+                                "formDefId": "gridForm",
+                                "validator": {
+                                    "className": "",
+                                    "properties": {}
+                                },
+                                "pageSize": "20",
+                                "requestParams": [],
+                                "enableSorting": "true",
+                                "storeBinder": {
+                                    "className": "org.joget.plugin.enterprise.MultirowFormBinder",
+                                    "properties": {
+                                        "formDefId": "gridForm",
+                                        "foreignKey": "fk"
+                                    }
+                                },
+                                "addLabel": "",
+                                "readonly": "",
+                                "deleteGridData": "true",
+                                "options": [
+                                    {
+                                        "format": "",
+                                        "width": "",
+                                        "label": "Name",
+                                        "formatType": "text",
+                                        "value": "name"
+                                    },
+                                    {
+                                        "format": "",
+                                        "width": "",
+                                        "label": "Select",
+                                        "formatType": "text",
+                                        "value": "select"
+                                    },
+                                    {
+                                        "format": "",
+                                        "width": "",
+                                        "label": "Date",
+                                        "formatType": "text",
+                                        "value": "date"
+                                    },
+                                    {
+                                        "format": "gridForm",
+                                        "width": "",
+                                        "label": "File",
+                                        "formatType": "file",
+                                        "value": "file"
+                                    }
+                                ],
+                                "sortField": "sort",
+                                "id": "FG",
+                                "iconIncluded": false,
+                                "abortRelatedRunningProcesses": "",
+                                "height": "60%",
+                                "showRowNumber": "",
+                                "disabledDelete": "",
+                                "validateMinRow": "",
+                                "submit-label-normal": "",
+                                "uniqueKey": "",
+                                "errorMessage": "Invalid number of rows",
+                                "deleteSubformData": "",
+                                "deleteMessage": "Delete row?",
+                                "label": "",
+                                "deleteFiles": "true",
+                                "loadBinder": {
+                                    "className": "org.joget.plugin.enterprise.MultirowFormBinder",
+                                    "properties": {
+                                        "formDefId": "gridForm",
+                                        "foreignKey": "fk"
+                                    }
+                                },
+                                "disabledAdd": "",
+                                "submit-label-readonly": "",
+                                "width": "60%",
+                                "readonlyLabel": ""
+                            }
+                        }
+                    ],
+                    "className": "org.joget.apps.form.model.Column",
+                    "properties": {
+                        "width": "100%"
+                    }
+                }
+            ],
+            "className": "org.joget.apps.form.model.Section",
+            "properties": {
+                "readonly": "",
+                "loadBinder": {
+                    "className": "",
+                    "properties": {}
+                },
+                "permissionReadonly": "",
+                "permission": {
+                    "className": "",
+                    "properties": {}
+                },
+                "comment": "",
+                "id": "section5",
+                "label": "Form Grid",
+                "storeBinder": {
+                    "className": "",
+                    "properties": {}
+                },
+                "readonlyLabel": ""
+            }
+        },
+        {
+            "elements": [
+                {
+                    "elements": [
+                        {
+                            "className": "com.monarch.shadow.lib.FormGridCustom",
+                            "properties": {
+                                "validateMaxRow": "",
+                                "showPopupDuplicate": "true",
+                                "formDefId": "gridForm",
+                                "validator": {
+                                    "className": "org.joget.plugin.enterprise.MultirowBasicValidator",
+                                    "properties": {
+                                        "validationrules": [
+                                            {
+                                                "fieldId": "name",
+                                                "mandatory": "true",
+                                                "validationType": "",
+                                                "message": "Wajib diisi!"
+                                            }
+                                        ]
+                                    }
+                                },
+                                "pageSize": "10",
+                                "requestParams": [],
+                                "enableSorting": "true",
+                                "storeBinder": {
+                                    "className": "org.joget.plugin.enterprise.MultirowFormBinder",
+                                    "properties": {
+                                        "formDefId": "gridForm",
+                                        "foreignKey": "fk"
+                                    }
+                                },
+                                "disabledDuplicate": "",
+                                "enableNested": "false",
+                                "readonly": "",
+                                "deleteGridData": "",
+                                "nestedColumns": [],
+                                "options": [
+                                    {
+                                        "value": "name",
+                                        "label": "Name",
+                                        "formatType": "text",
+                                        "format": "",
+                                        "width": "",
+                                        "visibility": "yes"
+                                    },
+                                    {
+                                        "value": "select",
+                                        "label": "Select",
+                                        "formatType": "text",
+                                        "format": "",
+                                        "width": "",
+                                        "visibility": "yes"
+                                    },
+                                    {
+                                        "value": "date",
+                                        "label": "Date",
+                                        "formatType": "date",
+                                        "format": "yyyy-MM-dd",
+                                        "width": "",
+                                        "visibility": "yes"
+                                    },
+                                    {
+                                        "value": "file",
+                                        "label": "File",
+                                        "formatType": "file",
+                                        "format": "",
+                                        "width": "",
+                                        "visibility": "yes"
+                                    }
+                                ],
+                                "sortField": "sort",
+                                "uniqueKeyMessage": "The data in the {column} column with the value {value} is already there!",
+                                "id": "field9",
+                                "abortRelatedRunningProcesses": "",
+                                "height": "500",
+                                "showRowNumber": "true",
+                                "disabledDelete": "",
+                                "validateMinRow": "",
+                                "submit-label-normal": "",
+                                "editable": "",
+                                "uniqueKey": "",
+                                "errorMessage": "Invalid number of rows",
+                                "deleteSubformData": "",
+                                "deleteMessage": "",
+                                "label": "",
+                                "nestedChildren": [],
+                                "deleteFiles": "",
+                                "importPreviewPageSize": "10",
+                                "loadBinder": {
+                                    "className": "org.joget.plugin.enterprise.MultirowFormBinder",
+                                    "properties": {
+                                        "formDefId": "gridForm",
+                                        "foreignKey": "fk"
+                                    }
+                                },
+                                "enableImport": "true",
+                                "disabledAdd": "",
+                                "submit-label-readonly": "",
+                                "width": "900",
+                                "checkboxDisable": "",
+                                "readonlyLabel": ""
+                            }
+                        },
+                        {
+                            "className": "com.monarch.shadow.lib.FormGridCustom",
+                            "properties": {
+                                "showRowNumber": "true",
+                                "disabledDelete": "",
+                                "formDefId": "areass",
+                                "editable": "",
+                                "pageSize": "10",
+                                "label": "Areas",
+                                "enableSorting": "true",
+                                "storeBinder": {
+                                    "className": "org.joget.plugin.enterprise.MultirowFormBinder",
+                                    "properties": {
+                                        "formDefId": "areass",
+                                        "foreignKey": "fk"
+                                    }
+                                },
+                                "enableNested": "true",
+                                "disabledDuplicate": "",
+                                "nestedChildren": [
+                                    {
+                                        "gridId": "eqGroupsGrid",
+                                        "formDefId": "equipmentGroup",
+                                        "label": "Equipment Groups",
+                                        "parentGridId": "",
+                                        "parentKey": "id",
+                                        "foreignKey": "parentid",
+                                        "sortWithButtons": "true",
+                                        "sortField": "sort",
+                                        "enableDuplicate": "false",
+                                        "disabledDuplicate": "false"
+                                    }
+                                ],
+                                "loadBinder": {
+                                    "className": "org.joget.plugin.enterprise.MultirowFormBinder",
+                                    "properties": {
+                                        "formDefId": "areass",
+                                        "foreignKey": "fk"
+                                    }
+                                },
+                                "readonly": "",
+                                "deleteGridData": "true",
+                                "disabledAdd": "",
+                                "options": [
+                                    {
+                                        "visibility": "yes",
+                                        "format": "",
+                                        "width": "",
+                                        "label": "Name",
+                                        "formatType": "text",
+                                        "value": "name"
+                                    },
+                                    {
+                                        "visibility": "no",
+                                        "format": "",
+                                        "width": "",
+                                        "label": "Parent ID",
+                                        "formatType": "text",
+                                        "value": "parentid"
+                                    }
+                                ],
+                                "width": "900",
+                                "sortField": "sort",
+                                "id": "areasGrid",
+                                "readonlyLabel": "",
+                                "height": "500",
+                                "nestedColumns": [
+                                    {
+                                        "gridId": "eqGroupsGrid",
+                                        "value": "name",
+                                        "label": "Name",
+                                        "formatType": "text",
+                                        "format": "",
+                                        "width": "",
+                                        "visibility": "yes"
+                                    }
+                                ]
+                            }
+                        },
+                        {
+                            "className": "com.monarch.shadow.lib.FormGridCustom",
+                            "properties": {
+                                "showRowNumber": "true",
+                                "disabledDelete": "",
+                                "formDefId": "equipmentGroup",
+                                "editable": "",
+                                "pageSize": "10",
+                                "label": "Equipment Groups",
+                                "enableSorting": "true",
+                                "storeBinder": {
+                                    "className": "org.joget.plugin.enterprise.MultirowFormBinder",
+                                    "properties": {
+                                        "formDefId": "equipmentGroup",
+                                        "foreignKey": "fk"
+                                    }
+                                },
+                                "enableNested": "false",
+                                "disabledDuplicate": "",
+                                "nestedChildren": [],
+                                "loadBinder": {
+                                    "className": "org.joget.plugin.enterprise.MultirowFormBinder",
+                                    "properties": {
+                                        "formDefId": "equipmentGroup",
+                                        "foreignKey": "fk"
+                                    }
+                                },
+                                "readonly": "",
+                                "deleteGridData": "true",
+                                "disabledAdd": "",
+                                "options": [
+                                    {
+                                        "visibility": "yes",
+                                        "format": "",
+                                        "width": "",
+                                        "label": "Name",
+                                        "formatType": "text",
+                                        "value": "name"
+                                    },
+                                    {
+                                        "visibility": "no",
+                                        "format": "",
+                                        "width": "",
+                                        "label": "Parent ID",
+                                        "formatType": "text",
+                                        "value": "parentid"
+                                    }
+                                ],
+                                "width": "900",
+                                "sortField": "sort",
+                                "id": "eqGroupsGrid",
+                                "readonlyLabel": "",
+                                "height": "500",
+                                "nestedColumns": []
+                            }
+                        }
+                    ],
+                    "className": "org.joget.apps.form.model.Column",
+                    "properties": {
+                        "width": "100%"
+                    }
+                }
+            ],
+            "className": "org.joget.apps.form.model.Section",
+            "properties": {
+                "readonly": "",
+                "loadBinder": {
+                    "className": "",
+                    "properties": {}
+                },
+                "sectionCollapsible": "none",
+                "permissionReadonly": "",
+                "permission": {
+                    "className": "",
+                    "properties": {}
+                },
+                "comment": "",
+                "label": "Shadow Form Grid",
+                "id": "shadow_form_grid",
+                "storeBinder": {
+                    "className": "",
+                    "properties": {}
+                },
+                "readonlyLabel": ""
+            }
+        },
+        {
+            "elements": [
+                {
+                    "elements": [
+                        {
+                            "className": "org.joget.SubformRepeater",
+                            "properties": {
+                                "borderColor": "",
+                                "validateMaxRow": "",
+                                "deleteMode": "enable",
+                                "editFormDefId": "",
+                                "formDefId": "featureStdField",
+                                "validator": {
+                                    "className": "",
+                                    "properties": {}
+                                },
+                                "enableSorting": "true",
+                                "collapsedByDefault": "",
+                                "collapsible": "true",
+                                "storeBinder": {
+                                    "className": "",
+                                    "properties": {}
+                                },
+                                "cardLayout": "true",
+                                "readonly": "",
+                                "sortField": "sort",
+                                "id": "field2",
+                                "dropdownBorderColor": "",
+                                "addMode": "enable",
+                                "cardColumns": "1",
+                                "validateMinRow": "1",
+                                "numbered": "true",
+                                "cardTitleField": "textField",
+                                "uniqueKey": "",
+                                "errorMessage": "Invalid number of rows",
+                                "label": "",
+                                "reorderWithButtons": "true",
+                                "loadBinder": {
+                                    "className": "",
+                                    "properties": {}
+                                },
+                                "editMode": "enable",
+                                "clonable": "true",
+                                "readonlyLabel": ""
+                            }
+                        }
+                    ],
+                    "className": "org.joget.apps.form.model.Column",
+                    "properties": {
+                        "width": "100%"
+                    }
+                }
+            ],
+            "className": "org.joget.apps.form.model.Section",
+            "properties": {
+                "readonly": "",
+                "loadBinder": {
+                    "className": "",
+                    "properties": {}
+                },
+                "sectionCollapsible": "none",
+                "permissionReadonly": "",
+                "permission": {
+                    "className": "",
+                    "properties": {}
+                },
+                "comment": "",
+                "label": "Shadow Repeater",
+                "id": "shadow_repeater",
+                "storeBinder": {
+                    "className": "",
+                    "properties": {}
+                },
+                "readonlyLabel": ""
+            }
+        }
+    ],
+    "className": "org.joget.apps.form.model.Form",
+    "properties": {
+        "noPermissionMessage": "",
+        "loadBinder": {
+            "className": "org.joget.apps.form.lib.WorkflowFormBinder",
+            "properties": {}
+        },
+        "name": "Feature - Form Grid",
+        "description": "",
+        "postProcessorRunOn": "create",
+        "permission": {
+            "className": "",
+            "properties": {}
+        },
+        "id": "featureFormGrid",
+        "postProcessor": {
+            "className": "",
+            "properties": {}
+        },
+        "storeBinder": {
+            "className": "org.joget.apps.form.lib.WorkflowFormBinder",
+            "properties": {}
+        },
+        "tableName": "j_sc_tran_t4"
+    }
+}

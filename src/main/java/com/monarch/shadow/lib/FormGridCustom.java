@@ -38,10 +38,15 @@ import java.text.DecimalFormat;
 import java.text.NumberFormat;
 import java.text.SimpleDateFormat;
 import java.util.*;
+import java.io.IOException;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import javax.servlet.http.HttpSession;
+import org.joget.plugin.base.PluginWebSupport;
 
-public class FormGridCustom extends Element implements FormBuilderPaletteElement, FormContainer, GridInnerDataRetriever, PwaOfflineResources, PwaOfflineReadonly {
+public class FormGridCustom extends Element implements FormBuilderPaletteElement, FormContainer, GridInnerDataRetriever, PwaOfflineResources, PwaOfflineReadonly, PluginWebSupport {
     private static final String MESSAGE_PATH = "messages/FormGridCustom";
-    private static final String VERSION = "2.12.2";
+    private static final String VERSION = "2.15.0";
 
     protected Map<FormData, FormRowSet> cachedRowSet = new HashMap<>();
     protected Map<String, FormData> formDatas = new HashMap<>();
@@ -54,6 +59,8 @@ public class FormGridCustom extends Element implements FormBuilderPaletteElement
     protected String loadedFormDefId;
     protected FormData formData;
     protected String formDefKeys;
+    protected NestedLoadBinder nestedLoadBinder;
+    protected Map<FormData, Set<String>> untouchedNestedRows = new WeakHashMap<>();
 
     private final Utils utils = new Utils();
 
@@ -76,10 +83,12 @@ public class FormGridCustom extends Element implements FormBuilderPaletteElement
         dataModel.put("optionsJson", optionsJson);
         boolean nested = "true".equals(getPropertyString("enableNested"));
         dataModel.put("nestedEnabled", nested);
+        dataModel.put("nestedSource", getNestedRelation() != null);
         dataModel.put("nestedReadonly", FormUtil.isReadonly(this, formData));
         if (nested) dataModel.put("nestedRelationsJson", getNestedRelationsJson());
 
         dataModel.put("rows", getRows(formData));
+        if (nestedLoadBinder != null) dataModel.put("nestedLoadToken", nestedLoadBinder.token(formData));
 
         String buttonLabel = "";
         if ("true".equals(getPropertyString("readonly"))) {
@@ -230,9 +239,18 @@ public class FormGridCustom extends Element implements FormBuilderPaletteElement
                     || "no".equals(entry.getValue().get("visibility"))) continue;
             Element field = innerForm == null ? null : FormUtil.findElement(id, innerForm, data);
             if (field == null || FormUtil.isReadonly(field, data)) continue;
-            String type = field.getClass().getName();
-            if (!type.startsWith("org.joget.apps.form.lib.")) continue;
-            type = type.substring(type.lastIndexOf('.') + 1);
+            String type = field.getClassName();
+            if ("id.co.itasoft.monarch.plugin.MonarchTextField".equals(type)) {
+                // Plain Shadow Text Fields share the native text editor. Specialized values retain their popup.
+                if ("true".equalsIgnoreCase(field.getPropertyString("hiddenField")) ||
+                        "true".equalsIgnoreCase(field.getPropertyString("encryption")) ||
+                        !field.getPropertyString("style").isEmpty() ||
+                        "valueOnly".equalsIgnoreCase(field.getPropertyString("useDefaultWhenEmpty"))) continue;
+                type = "TextField";
+            } else {
+                if (!type.startsWith("org.joget.apps.form.lib.")) continue;
+                type = type.substring(type.lastIndexOf('.') + 1);
+            }
             if (!Arrays.asList("TextField", "TextArea", "SelectBox", "Radio", "CheckBox", "DatePicker", "FileUpload").contains(type)) continue;
             JSONObject column = new JSONObject();
             column.put("id", id);
@@ -704,6 +722,13 @@ public class FormGridCustom extends Element implements FormBuilderPaletteElement
     }
 
     protected List<Map<String, String>> getNestedColumns() {
+        // Nested Columns is temporarily disabled. Display columns come from each child grid's Columns.
+        // The archived property definition is properties/disabled/nestedColumns.json.
+        return Collections.emptyList();
+    }
+
+    /* Nested Columns implementation retained for reactivation:
+    protected List<Map<String, String>> getNestedColumns() {
         List<Map<String, String>> result = new ArrayList<>();
         Object configured = getProperty("nestedColumns");
         Collection<?> rows = configured instanceof Object[] ? Arrays.asList((Object[]) configured) :
@@ -725,6 +750,7 @@ public class FormGridCustom extends Element implements FormBuilderPaletteElement
         }
         return result;
     }
+    */
 
     protected Object getEffectiveColumns() {
         JSONObject relation = getNestedRelation();
@@ -795,7 +821,62 @@ public class FormGridCustom extends Element implements FormBuilderPaletteElement
     }
 
     @Override
-    public FormLoadBinder getLoadBinder() { return configureNestedFormBinder(super.getLoadBinder()); }
+    public FormLoadBinder getLoadBinder() {
+        FormLoadBinder binder = configureNestedFormBinder(super.getLoadBinder());
+        // JSON storage and custom single-row binders retain their existing behavior.
+        if (binder instanceof FormLoadMultiRowElementBinder && getNestedRelation() != null && WorkflowUtil.getHttpServletRequest() != null) {
+            if (nestedLoadBinder == null || nestedLoadBinder.delegate != binder) nestedLoadBinder = new NestedLoadBinder(binder);
+            return nestedLoadBinder;
+        }
+        return binder;
+    }
+
+    protected String nestedUsername() { return WorkflowUtil.getCurrentUsername(); }
+
+    @Override
+    public void webService(HttpServletRequest request, HttpServletResponse response) throws IOException {
+        response.setContentType("application/json;charset=UTF-8");
+        response.setHeader("Cache-Control", "no-store");
+        if (!"POST".equals(request.getMethod())) { response.sendError(405); return; }
+        HttpSession session = request.getSession(false);
+        if (session == null) { response.sendError(403); return; }
+        NestedLoadBinder.State state = NestedLoadBinder.state(session, request.getParameter("token"));
+        if (state == null) {
+            response.sendError(410, "Nested data session expired. Reload the form."); return;
+        }
+        if (!Objects.equals(state.username, nestedUsername())) { response.sendError(403); return; }
+        AppDefinition previousApp = AppUtil.getCurrentAppDefinition();
+        try {
+            AppUtil.setCurrentAppDefinition(state.app);
+            synchronized (state) {
+                // The token binds the source binder, record and workflow context on the server.
+                // Never accept a Form ID, table, SQL or owner-record ID from the browser.
+                for (Element current = state.grid; current != null; current = current.getParent()) {
+                    if (!current.isAuthorize(state.data)) { response.sendError(403); return; }
+                }
+                String parentKey = request.getParameter("parentKey");
+                if (parentKey == null || parentKey.isEmpty()) { response.sendError(400); return; }
+                if (state.baseline == null) {
+                    state.baseline = state.grid.nestedLoadBinder.delegate.load(state.grid, state.primaryKey, state.data);
+                    if (state.baseline == null) state.baseline = new FormRowSet();
+                    if (!state.baseline.isEmpty() && !state.baseline.isMultiRow()) throw new IllegalStateException("A multirow binder is required.");
+                }
+                String foreignKey = state.grid.getNestedRelation().getString("foreignKey");
+                String sort = state.grid.getEffectiveSortField();
+                List<FormRow> matched = new ArrayList<>();
+                for (FormRow row : state.baseline) if (parentKey.equals(row.getProperty(foreignKey))) matched.add(row);
+                if (!sort.isEmpty()) matched.sort(Comparator.comparingInt(row -> {
+                    try { return Integer.parseInt(row.getProperty(sort)); } catch (Exception ignored) { return Integer.MAX_VALUE; }
+                }));
+                JSONArray result = new JSONArray();
+                for (FormRow row : matched) result.put(new JSONObject(row));
+                response.getWriter().write(new JSONObject().put("rows", result).put("total", state.baseline.size()).toString());
+            }
+        } catch (Exception ex) {
+            LogUtil.error(getClassName(), ex, "Unable to load nested grid rows");
+            response.sendError(500, "Unable to load child rows. Retry expansion.");
+        } finally { AppUtil.setCurrentAppDefinition(previousApp); }
+    }
 
     @Override
     public FormStoreBinder getStoreBinder() { return configureNestedFormBinder(super.getStoreBinder()); }
@@ -1325,6 +1406,22 @@ public class FormGridCustom extends Element implements FormBuilderPaletteElement
                 }
             }
 
+            JSONObject nestedRelation = getNestedRelation();
+            if (nestedRelation != null && FormUtil.isFormSubmitted(this, formData) &&
+                    formData.getRequestParameter(param + "_nested_loaded") != null) {
+                FormRowSet baseline = formData.getLoadBinderData(this);
+                Set<String> loadedParents = new HashSet<>();
+                try {
+                    JSONArray loaded = new JSONArray(formData.getRequestParameter(param + "_nested_loaded"));
+                    for (int n = 0; n < loaded.length(); n++) loadedParents.add(loaded.getString(n));
+                } catch (Exception ex) { formData.addFormError(param, "Invalid nested load state. Reload the form."); }
+                Set<String> postedIds = new HashSet<>();
+                for (FormRow row : rowSet) postedIds.add(row.getId());
+                rowSet = mergeUnloadedRows(baseline, rowSet, nestedRelation.getString("foreignKey"), loadedParents);
+                Set<String> preserved = new HashSet<>();
+                for (FormRow row : rowSet) if (!postedIds.contains(row.getId())) preserved.add(row.getId());
+                untouchedNestedRows.put(formData, preserved);
+            }
             this.cachedRowSet.put(formData, rowSet);
         }
 
@@ -1341,6 +1438,20 @@ public class FormGridCustom extends Element implements FormBuilderPaletteElement
             }
         }
 
+    }
+
+    /** Preserve unopened branches; an opened branch may be edited or completely deleted. */
+    protected FormRowSet mergeUnloadedRows(FormRowSet baseline, FormRowSet submitted, String foreignKey, Set<String> loadedParents) {
+        FormRowSet result = new FormRowSet(); result.setMultiRow(true);
+        Set<String> submittedIds = new HashSet<>();
+        for (FormRow row : submitted) { result.add(row); submittedIds.add(row.getId()); }
+        if (baseline != null) for (FormRow row : baseline) {
+            if (!loadedParents.contains(row.getProperty(foreignKey)) && !submittedIds.contains(row.getId())) {
+                FormRowSet single = new FormRowSet(); single.add(row);
+                result.add(convertFormRowToJson(single).get(0));
+            }
+        }
+        return result;
     }
 
     protected FormRowSet parseFormRowSetFromJson(String json) {
@@ -1394,7 +1505,7 @@ public class FormGridCustom extends Element implements FormBuilderPaletteElement
 
             FormRow newRow = convertJsonToFormRow(jsonRow);
 
-            if (isSortingEnabled) {
+            if (isSortingEnabled && !untouchedNestedRows.getOrDefault(this.formData, Collections.emptySet()).contains(newRow.getId())) {
                 newRow.put(sortField, Integer.toString(index));
             }
 

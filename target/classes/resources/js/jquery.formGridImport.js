@@ -23,12 +23,18 @@
             return JSON.parse($(this).find("textarea:not(.formgrid-editor)").first().val());
         }).get();
     }
-    function validate(grid, batch) {
+    function validate(grid, batch, options) {
         if (grid.hasClass("readonly") || grid.hasClass("disabledAdd")) throw new Error("Adding rows is disabled for this grid.");
-        rules.validateBatch(batch, existingRows(grid), grid.children(".uniqueKey").val(), parseInt(grid.children("#validateMaxRow").val(), 10));
+        if (options && options.checkContext) options.checkContext();
+        var maximum = parseInt(grid.children("#validateMaxRow").val(), 10);
+        if (options && options.existingCount && Number.isFinite(maximum)) {
+            var count = options.existingCount();
+            if (count + batch.rows.length > maximum) throw new Error("Import would exceed the maximum of " + maximum + " rows (" + count + " existing, " + batch.rows.length + " imported).");
+        }
+        rules.validateBatch(batch, existingRows(grid), grid.children(".uniqueKey").val(), maximum);
     }
-    function append(grid, batch) {
-        validate(grid, batch); // Recheck, because rows can change after preview.
+    function append(grid, batch, options) {
+        validate(grid, batch, options); // Recheck, because rows can change after preview.
         var table = grid.children("table"), body = table.children("tbody"), newRows = [];
         var firstIndex = table.find("tr.grid-row:not(.grid-row-template)").length;
         var template = table.find("tr.grid-row-template");
@@ -43,6 +49,7 @@
             // updateRowIndex reads the enclosing grid's name and ID.
             newRows.push(row);
         });
+        if (options && options.beforeCommit) options.beforeCommit(batch);
         newRows.forEach(function(row) { body.append(row); });
         newRows.forEach(function(row, index) { $.formGridCustom.updateRowIndex(row, firstIndex + index); });
         $.formGridCustom.disabledMoveAction(table);
@@ -52,9 +59,12 @@
 
     $.fn.formGridImport = function(options) {
         return this.each(function() {
-            var grid = $(this), panel = grid.children(".formgrid-import-panel");
-            if (!panel.length || grid.data("shadow-import-initialized")) return;
-            grid.data("shadow-import-initialized", true);
+            var host = $(this), grid = options.targetGrid || host;
+            var panel = options.panel || host.children(".formgrid-import-panel");
+            var open = options.openButton || host.children(".formgrid-import-open");
+            if (!panel.length || host.data("shadow-import-initialized")) return;
+            host.data("shadow-import-initialized", true);
+            if (!options.targetGrid) grid.data("shadow-import-options", options);
             var fileInput = panel.find(".formgrid-import-file"), sheetSelect = panel.find(".formgrid-import-sheet");
             var status = panel.find(".formgrid-import-status"), preview = panel.find(".formgrid-import-preview");
             var confirm = panel.find(".formgrid-import-confirm"), workbook, library, batch, generation = 0;
@@ -62,6 +72,12 @@
             var previous = panel.find(".formgrid-import-previous"), next = panel.find(".formgrid-import-next");
             var previewPage = 1, previewPageSize = 10;
             sizeSelect.val(String(previewPageSize));
+
+            function prepare(batch) {
+                if (options.checkContext) options.checkContext();
+                var fixed = options.fixedValues ? options.fixedValues() : {};
+                return $.extend({}, batch, {rows: batch.rows.map(function(row) { return $.extend({}, row, fixed); })});
+            }
 
             function report(message, error) {
                 status.text(message).toggleClass("form-error-message", !!error).attr("role", error ? "alert" : "status");
@@ -112,8 +128,8 @@
                 preview.empty();
                 pagination.prop("hidden", true);
                 try {
-                    batch = rules.parseSheet(library, workbook, sheetSelect.val(), options.columns, options.sortField);
-                    validate(grid, batch);
+                    batch = prepare(rules.parseSheet(library, workbook, sheetSelect.val(), options.columns, options.sortField));
+                    validate(grid, batch, options);
                     renderPreviewPage();
                     report(batch.rows.length + " rows ready to append."
                         + (batch.ignored.length ? " Ignored system columns: " + batch.ignored.join(", ") + "." : ""));
@@ -138,7 +154,9 @@
                 event.stopPropagation();
                 if (!this.disabled) { previewPage++; renderPreviewPage(); }
             });
-            grid.children(".formgrid-import-open").on("click.shadowImport", function() {
+            open.on("click.shadowImport", function() {
+                try { if (options.checkContext) options.checkContext(); }
+                catch (error) { panel.prop("hidden", false); report(error.message, true); return; }
                 panel.prop("hidden", false);
                 $(this).attr("aria-expanded", "true");
                 fileInput.trigger("focus");
@@ -146,7 +164,7 @@
             panel.find(".formgrid-import-cancel").on("click.shadowImport", function() {
                 reset();
                 panel.prop("hidden", true);
-                grid.children(".formgrid-import-open").attr("aria-expanded", "false").trigger("focus");
+                open.attr("aria-expanded", "false").trigger("focus");
             });
             fileInput.on("change.shadowImport", function(event) {
                 event.stopPropagation();
@@ -178,7 +196,7 @@
                 confirm.prop("disabled", true);
                 try {
                     var count = batch.rows.length;
-                    append(grid, batch);
+                    append(grid, prepare(batch), options);
                     reset();
                     report(count + " rows imported. Save the form to persist them.");
                 } catch (error) { report(error.message, true); }

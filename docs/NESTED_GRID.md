@@ -1,6 +1,6 @@
 # Dynamic nested subgrids
 
-Version 2.12.0 provides optional expandable parent/child views. Nesting is disabled by default. Configure the complete hierarchy on one root Shadow Form Grid; additional tables and levels require Form Builder configuration, without rebuilding the plugin.
+Version 2.15.0 provides optional expandable parent/child views. Nesting is disabled by default. Configure the complete hierarchy on one root Shadow Form Grid; additional tables and levels require Form Builder configuration, without rebuilding the plugin.
 
 ## Form Builder setup
 
@@ -18,34 +18,11 @@ Version 2.12.0 provides optional expandable parent/child views. Nesting is disab
 
 The root grid is the default parent when Parent Grid ID is empty. Parent Key Field defaults to `id`. You can instead use a stable, non-empty, unique field from the parent Form. Use Form Field IDs, without the database `c_` prefix. Definition order does not matter. Multiple children can reference the same parent grid to create branches.
 
-The child Form's configured table determines the database table. Child Grid ID identifies a **Form Grid element**, not a Form Definition ID or SQL table name. Configure the foreign key field in the child Form even if it is omitted from visible Columns. Display columns can be configured directly in **Nested Columns** on the root grid.
+The child Form's configured table determines the database table. Child Grid ID identifies a **Form Grid element**, not a Form Definition ID or SQL table name. Configure the foreign key field in the child Form even if it is omitted from visible Columns. Configure display columns in **Columns** on each child grid.
 
-## Configure nested display columns
+## Configure display columns on each child grid
 
-Open **Nested Subgrids → Nested Columns**, below Child Tables / Subgrids. This uses the same native property grid as the main Columns setting, with an additional **Child Grid ID** dropdown to identify the subgrid:
-
-Each column configuration is displayed in two rows on a wide panel: Child Grid ID, Field ID, Label, and Format Type on top; Format, Width, Visibility, and native Move/Delete controls below. Narrow panels wrap into fewer columns. Native CSV input and stored column order are preserved.
-
-| Child Grid ID | Field ID | Label | Format Type | Format | Width | Visibility |
-| --- | --- | --- | --- | --- | --- | --- |
-| areasGrid | name | Area Name | Text | | 35% | Yes |
-| areasGrid | inspectionDate | Inspection Date | Date | yyyy-MM-dd | 180px | Yes |
-| areasGrid | parentid | Parent | Text | | | No |
-
-The dropdown lists the Child Grid IDs configured above. Field ID autocomplete uses the selected child's **Child Form ID**, so adding a field to the Area Form makes it discoverable here after reloading Form Builder. Select or type the Field ID without `c_`, then choose its label, format, width, and visibility. The example `inspectionDate` must exist in that child Form before it can be used.
-
-Rows determine the display order within each child; use the native Move Up/Move Down controls to reorder them. All native format choices are available: Text, HTML, newline to BR, Decimal, Currency, Date, File, Image, and Options. Formatting uses the child grid's existing server/client formatter, popup Form, and option/file metadata. **Visibility = No** hides the column while preserving its row data.
-
-When a child has at least one Nested Columns entry, those entries define its complete column list and override that source grid's Columns. A child with no entries uses its existing source Columns. Other children and the root grid's Columns are unaffected. Removing all entries for a child restores its source Columns after saving the configuration and reloading the form. The source grid and its binders must still exist; Nested Columns configures display fields and does not create Form fields or database columns.
-
-The separate Nested Columns CSV order is:
-
-```text
-Child Grid ID;Field ID;Label;Format Type;Format;Width;Visibility
-areasGrid;name;Area Name;text;;35%;yes
-```
-
-Its stored property is `nestedColumns`; Child Tables / Subgrids keeps its original nine CSV columns and appends Disable Duplicate as the tenth column. Unknown child mappings, fields missing from the selected Form, duplicate Field IDs within a child, and invalid format/visibility values produce configuration errors. If a child is removed or renamed, its previous selection remains visible as “not configured” until corrected.
+Nested Columns is temporarily disabled. Configure **Columns** directly on each child Shadow Form Grid in the Design canvas. The nested view follows that grid's field order, labels, formats, widths and visibility. Legacy `nestedColumns` properties remain in saved definitions but are ignored while this feature is disabled. The property schema is retained in `src/main/resources/properties/disabled/nestedColumns.json`, and the parser implementation is commented out for reactivation.
 
 ## Select the child Form directly in nested properties
 
@@ -97,7 +74,7 @@ These are independent nested properties. They do not inherit the root or source 
 
 For persisted ordering, add a hidden field such as `sort` to the child Form and select it as **Sort Field in the nested relation row**. You do not need to enable sorting on the source child grid. On submit, the child grid uses the relation's Sort Field to store the ordering; on load it restores that ordering. The first child's Up button and last child's Down button are disabled separately for each parent. Sorting one parent's children preserves the order of other parents' children. The Sort Field must be separate from `id` and the child FK.
 
-Enabling **Sort with Buttons** also displays a **No.** column in the nested view. Numbers start at 1 for each parent and refresh after moving, adding, or deleting rows. The source child grid's **Show Row Number** option also displays this column when sort buttons are off. These display numbers do not become Form fields or enter the submitted row JSON. A parent with one child shows number 1 and both move buttons disabled.
+Enabling **Sort with Buttons** also displays a **No.** column in the nested view. Numbers start at 1 for each parent and refresh after moving, adding, or deleting rows. On the root grid, **Enable Sorting Feature** automatically displays the **No.** column even when **Show Row Number** is off. The source child grid's **Show Row Number** option also displays this column when sort buttons are off. These display numbers do not become Form fields or enter the submitted row JSON. A parent with one child shows number 1 and both move buttons disabled.
 
 With **Duplicate = Default**, clicking the copy icon immediately inserts a copy beside its source, with a new ID and the same parent FK. With **Duplicate = Popup Dialog**, the configured child Form opens with the original row's values and a new ID. **No new row is added until that popup is submitted successfully.** Canceling adds nothing. The submitted copy is assigned back to the same parent FK, including temporary binder request parameters. The selected nested mode takes precedence over the source grid's popup setting; Default also bypasses the source grid's automatic popup for unique fields, retaining its unique-value suffix and validation. Duplicating a row copies its values without copying its descendants. Read Only, Disable Add, maximum rows, and Unique Column validation remain enforced.
 
@@ -105,13 +82,21 @@ Example for the supplied Area setup: relation `areasGrid` → **Sort with Button
 
 The main grid uses **UI → Duplicate → Duplicate Mode** with the same choices: **Default** (`false`) copies immediately, and **Popup Dialog** (`true`) opens its Form first. Existing checkbox values retain these meanings; blank values default to immediate copying. Unique Column still receives a copy suffix and is validated in Default mode. **Disable Duplicate** remains a separate main-grid checkbox; checking it hides Duplicate Mode, and unchecking it shows the mode selector again. Each nested relation keeps its own selected mode.
 
+## Import into a nested subgrid
+
+On each child Shadow Form Grid in Design, enable **Import Data → Enable Excel / CSV Import** and configure its **Columns** and load/store binders. After saving the Builder and reloading the form, expand the parent rows until the child table is visible. Its heading shows **Import Excel / CSV** beside **Add**. Import stays unavailable while lazy rows load and is hidden for readonly roots/children or Disable Add.
+
+The nested panel uses the root import workflow: download the current child's template, choose `.xlsx`, `.xls` or `.csv`, review the worksheet and preview, then confirm **Import Rows**. The immediate parent FK is supplied automatically and excluded from the file/template along with the sort field. A file containing that FK column is rejected rather than moving rows to another parent. Every imported row gets a fresh ID and enters the canonical child JSON; editable fields remain editable.
+
+Each parent has its own import preview, preserved across collapse/expand, paging and view refresh. Changing the parent's key or removing its row invalidates the pending import. Unique and maximum-row checks run at preview and confirmation; lazy-load baseline counts include unopened branches for the maximum. Cross-branch uniqueness and all row validation are also checked by the server at submission. Import opens the last page of the affected parent and leaves other parents unchanged. **Save/submit the containing form** to persist rows through the child's configured store binder.
+
 ## Load and store binders
 
-Every grid remains the owner of its submitted rows. Nested views do not run SQL, replace binder classes, or create database tables/constraints. The explicit Child Form ID synchronizes the Form selection on binders that have a `formDefId` setting. The source child grids are hidden automatically, but their named JSON inputs remain enabled and submit normally. Configure the binders on all six grids before testing save/reload.
+Every grid remains the owner of its submitted rows. Nested views do not run SQL, replace binder classes, or create database tables/constraints. The explicit Child Form ID synchronizes the Form selection on binders that have a `formDefId` setting. In Preview and runtime, the source child grids are hidden automatically, but their named JSON inputs remain enabled and submit normally. In the Form Builder Design canvas, every source grid stays visible and selectable with a Grid ID and Form ID annotation; nested initialization is skipped there. Configure the binders on all six grids before testing save/reload.
 
 **Separate the containing record's ownership key from the nested relationship key.** For example, give all child tables a `recordId` field for the enclosing form record. Configure each grid's usual multirow load/store binder to load and save records for that `recordId`. Keep `plantId`, `areaId`, etc. as ordinary persisted child Form fields; they identify the immediate nested parent. A store binder configured to overwrite `plantId` with the enclosing record ID would destroy the Plant → Area relationship.
 
-Each child load binder must return **all relevant descendant records for the current containing record**, including children of parents on other grid pages. Restrict these binders to the current user's authorized records using your application's existing binder configuration. Expansion renders the matching child rows in the browser; database data is loaded by the ordinary binders when the form loads. It is not a separate database request per expansion.
+Each child load binder must return **all relevant descendant records for the current containing record**, including children of parents on other grid pages. Restrict these binders to the current user's authorized records using your application's existing binder configuration. For a child with a multirow load binder, the initial form load defers that binder. Expanding a parent requests its matching child rows using a session-bound token. The first expansion invokes the configured binder in its original app, record and workflow context; its result is cached on the server for that form view. The browser receives only the requested parent's rows. Deeper child binders remain deferred until their own parents are expanded. The binder may still read all rows for its configured owner record; this is not database paging or a replacement for its access filters.
 
 Example stored rows:
 
@@ -125,20 +110,20 @@ tags:            id=tag1, recordId=main1, equipmentTypeId=t1
 parameters:      id=pr1,  recordId=main1, tagId=tag1
 ```
 
-If you use JSON storage without store binders, each grid continues to save its own JSON field on the enclosing record; the same nesting configuration applies.
+If you use JSON storage without store binders, each grid continues to save its own JSON field on the enclosing record; the same nesting configuration applies. JSON values and custom single-row load binders retain their current loading behavior; deferred binder loading applies to multirow load binders. Child views are still rendered only when expanded. A plugin update invalidates tokens belonging to the previous bundle classloader; new form loads discard those stale states, while old pages receive a reload message. Deferred tokens expire after 30 minutes; reload the form if an unopened branch can no longer be loaded. The current implementation uses server session state and requires session affinity in a clustered deployment.
 
 ## Runtime behavior
 
-- Each nested table has independent pagination per parent and level, starting with the source child grid's **Page Size** (default 20). **Rows per page** offers 10, 20, 50, 100 and any configured custom size, with first/previous/next/last buttons and a row/page summary. These controls also work in Read Only mode. Page and size selections survive collapse/expand, root paging, and data refreshes while the form stays open.
-- Only the active nested page and its expanded descendants are rendered. Row numbers continue across pages; move buttons reorder all siblings and follow the moved row across page boundaries. Add and popup Duplicate open the page containing the new row. Deleting/filtering rows clamps the current page to the remaining pages. Pagination preserves every source row for validation and submission; the ordinary binders still load all relevant records, so it reduces nested rendering work, not database loading or the source grid's data footprint.
+- Each nested table has independent pagination per parent and level, starting with the source child grid's configured **Page Size**. With at most 10 visible rows, every row is shown and the pager is hidden, even if an older configuration has a smaller page size. Above 10 rows, compact controls appear at the bottom right. **Rows per page** offers 10, 20, 50, 100 and any configured custom size, with first/previous/next/last buttons and a row/page summary. These controls also work in Read Only mode. Page and size selections survive collapse/expand, root paging, and data refreshes while the form stays open.
+- Only the active nested page and its expanded descendants are rendered. Row numbers continue across pages; move buttons reorder all siblings and follow the moved row across page boundaries. Add and popup Duplicate open the page containing the new row. Deleting/filtering rows clamps the current page to the remaining pages. On submit, the multirow binder loads its baseline and merges untouched branches with posted rows. Loaded-parent markers distinguish an unopened branch from an opened branch whose rows were all deleted. Submission waits while a child request is in progress.
 - **Collapse all** and **Expand all**, above the root table, close or open every configured level and branch for the currently loaded rows. These controls also work in Read Only mode and affect only their own root grid. They do not submit the Form or change row data.
 - Bulk expansion includes parent rows on other grid pages. Off-page detail content is rendered when its page is opened and released when hidden, preserving expansion state. Child lookup is indexed by FK during each render. A later added parent starts collapsed; click Expand all again to include it. Collapse all clears descendant expansion state too.
 - Click **+** / **−** to expand or collapse a row. Each row remembers its expanded descendants while paging or refreshing. Empty subgrids show **No related records.**
 - **Add** opens the child grid's configured Form. The FK is prefilled and enforced in the callback, including temporary binder request parameters. A new row immediately belongs to the selected parent. Add honors Read Only, Disable Add, and the source grid's maximum row limit.
 - The toolbar uses the same icon buttons as the root grid: Move Up, Move Down, Edit, Duplicate, and Delete, with tooltips and accessible labels.
-- **Edit** and **Delete** operate on the original child grid rows using its existing popup and delete behavior. Child values are displayed in the nested view; child editing uses the popup, including when the source grid has Editable Form Grid enabled. The root grid retains inline editing.
+- **Edit** and **Delete** operate on the original child grid rows using its existing popup and delete behavior. Child values are displayed in the nested view; when the child grid has **Editable Form Grid** enabled, supported fields are edited directly in its nested rows. Visible editors commit to the canonical child JSON while preserving the FK and metadata. Text inputs, multiline fields, native options/date/file fields, and plain MonarchTextField fields are supported; readonly, hidden, encrypted or specially formatted custom fields retain the popup. File upload and uniqueness validation use the same pipeline as the root grid. The root grid retains inline editing.
 - Read-only roots/children display child values without mutation actions. File/image download links retain their normal Form permissions.
-- Parent deletion is blocked while related child rows remain. Delete leaves first. Duplicating a parent duplicates that row only; children remain attached to the original parent.
+- Expand a parent before deleting it so its deferred child records can be checked. Parent deletion is blocked while related child rows remain. Delete leaves first. Duplicating a parent duplicates that row only; children remain attached to the original parent.
 - Browser and server validation reject cycles, unknown/duplicate grid IDs, invalid field configuration, empty/duplicate parent keys, and child rows with no matching parent. The server also verifies that FK and custom parent key fields exist in the selected Forms. Invalid configuration leaves the ordinary child grids visible so the setup can be corrected.
 - Changes persist when the enclosing form is saved through the configured binders. If a parent business key changes, update the children's FKs to match before saving.
 

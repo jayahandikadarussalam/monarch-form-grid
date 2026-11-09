@@ -8,7 +8,8 @@ const root = path.join(__dirname, '../../main/resources');
 const schema = JSON.parse(fs.readFileSync(path.join(root,'properties/FormGridCustom.json'),'utf8').replace('%s','{}'));
 const properties = schema.flatMap(page=>page.properties);
 const definition = properties.find(p=>p.name==='nestedChildren');
-const columnsDefinition = properties.find(p=>p.name==='nestedColumns');
+// The UI definition is archived while Nested Columns is disabled; keep its decorator coverage.
+const columnsDefinition = JSON.parse(fs.readFileSync(path.join(root,'properties/disabled/nestedColumns.json'),'utf8'));
 const script = fs.readFileSync(path.join(root,'resources/js/formGridNestedProperties.js'),'utf8');
 const escape = value => String(value ?? '').replaceAll('&','&amp;').replaceAll('"','&quot;').replaceAll('<','&lt;');
 const first = {gridId:'areasGrid',formDefId:'areass',label:'Areas',parentGridId:'',parentKey:'id',foreignKey:'parentid',sortWithButtons:'true',sortField:'sort',enableDuplicate:'false',disabledDuplicate:'false'};
@@ -106,9 +107,48 @@ test('the layout also applies after a native CSV switch recreates the table',asy
 test('the presentation helper is versioned and leaves native grid, Form AJAX, and CSV column order intact',()=>{
     assert.equal(definition.type,'grid');
     const helper=properties.find(p=>p.name==='nestedPropertiesLayout');
-    assert.equal(helper.type,'custom');assert.match(helper.script_url,/formGridNestedProperties\.js\?v=2\.12\.2$/);
+    assert.equal(helper.type,'custom');assert.match(helper.script_url,/formGridNestedProperties\.js\?v=2\.15\.0$/);
     assert.equal(definition.columns.find(c=>c.key==='formDefId').type,'selectbox');
     assert.equal(definition.columns.map(c=>first[c.key]).join(';'),'areasGrid;areass;Areas;;id;parentid;true;sort;false;false');
+});
+test('Child Form builder links follow each row selection and disappear when cleared',async t=>{
+    const s=setup();t.after(s.close);const data=savedRow(s),select=data.find('[name="formDefId"]');
+    const link=data.find('.monarch-nested-open-builder');
+    assert.equal(link.length,1);assert.equal(link.attr('href'),'/jw/web/console/app/demo/1/form/builder/areass');
+    assert.equal(link.attr('target'),'_blank');assert.equal(link.attr('rel'),'noopener noreferrer');
+    assert.equal(link.attr('aria-label'),'Open Item In Builder');
+    const other=s.$(row(first)).appendTo(s.table.children('tbody'));
+    await new Promise(resolve=>setTimeout(resolve,0));
+    select.append(s.$('<option>').val('second/form?#').text('Second')).val('second/form?#').trigger('change');
+    assert.equal(link.attr('href'),'/jw/web/console/app/demo/1/form/builder/second%2Fform%3F%23');
+    assert.equal(other.find('.monarch-nested-open-builder').attr('href'),'/jw/web/console/app/demo/1/form/builder/areass');
+    select.val('').trigger('change');
+    assert.equal(link.attr('href'),undefined);assert.equal(link.css('display'),'none');
+    assert.equal(select.parent().hasClass('monarch-nested-form-control'),false);
+    select.val('areass').trigger('change');
+    assert.equal(link.attr('href'),'/jw/web/console/app/demo/1/form/builder/areass');
+    assert.notEqual(link.css('display'),'none');
+    await new Promise(resolve=>setTimeout(resolve,0));
+    assert.equal(data.find('.monarch-nested-open-builder').length,1);assert.deepEqual(values(data),first);
+    assert.equal(s.table.find('.grid_model .monarch-nested-open-builder').length,0);
+    assert.equal(s.$('#editor_nestedColumns .monarch-nested-open-builder').length,0);
+});
+test('builder links work after native row cloning, asynchronous Form options, and CSV table replacement',async t=>{
+    const s=setup();t.after(s.close);
+    const added=s.$('<tr>').html(s.table.find('.grid_model').html()).appendTo(s.table.children('tbody'));
+    await new Promise(resolve=>setTimeout(resolve,0));
+    const select=added.find('[name="formDefId"]'),link=added.find('.monarch-nested-open-builder');
+    assert.equal(link.attr('href'),undefined);assert.equal(link.css('display'),'none');
+    // Joget restores the saved selection after loading options, without a select change event.
+    select.empty().append('<option value="asyncForm">Async Form</option>').val('asyncForm');
+    await new Promise(resolve=>setTimeout(resolve,0));
+    assert.equal(link.attr('href'),'/jw/web/console/app/demo/1/form/builder/asyncForm');
+    assert.equal(select[0],added.find('[name="formDefId"]')[0]);
+    s.table.remove();
+    const table=s.$(`<table id="editor_nestedChildren"><tbody>${row(first)}</tbody></table>`).prependTo(s.$('#editor_nestedChildren_input'));
+    await new Promise(resolve=>setTimeout(resolve,0));
+    assert.equal(table.find('.monarch-nested-open-builder').length,1);
+    assert.equal(table.find('.monarch-nested-open-builder').attr('href'),'/jw/web/console/app/demo/1/form/builder/areass');
 });
 function search(input,term) {
     let result;
@@ -178,7 +218,8 @@ test('Sort Field visibility follows only its own row checkbox and retains the sa
     assert.notEqual(added.find('[name="sortField"]').closest('td').css('display'),'none');
 });
 
-test('Nested Columns exposes the native Columns controls with a configured child grid selector',()=>{
+test('Nested Columns is unregistered and its native Columns schema is archived for reactivation',()=>{
+    assert.equal(properties.some(p=>p.name==='nestedColumns'),false);
     assert.equal(columnsDefinition.type,'grid');assert.equal(columnsDefinition.control_field,'enableNested');
     assert.deepEqual(columnsDefinition.columns.map(c=>c.key),['gridId','value','label','formatType','format','width','visibility']);
     const main=properties.find(p=>p.name==='options');

@@ -1,5 +1,64 @@
 # Changelog
 
+## [2.15.0] - 2026-11-09
+
+### Ditambahkan
+- Tombol Import Excel / CSV pada header setiap nested subgrid yang mengaktifkan import, memakai panel preview, pilihan worksheet, template Excel, dan konfirmasi seperti root.
+- Import mengisi FK parent langsung secara otomatis; FK dan sort tidak perlu diisi dalam file atau template nested. Preview terisolasi per parent dan tetap terjaga saat collapse, paging, atau refresh tampilan.
+- Validasi readonly, Disable Add, unique dan batas baris diperiksa saat preview dan konfirmasi. Jumlah baseline lazy load ikut diperhitungkan dalam batas baris tanpa mengirim isi cabang lain.
+- Hasil import masuk ke JSON asli child, mendukung editable grid dan membuka halaman terakhir parent terkait. Submit form induk tetap diperlukan untuk penyimpanan melalui binder.
+
+## [2.14.0] - 2026-11-09
+
+### Diubah
+- Nested Columns dinonaktifkan: parser lama dikomentari dan schema properties dipindahkan ke properties/disabled/nestedColumns.json. Kolom nested mengikuti Columns pada setiap child grid; konfigurasi override lama diabaikan.
+
+### Diperbaiki
+- Editable Form Grid pada child sekarang merender editor inline di dalam baris nested, termasuk child yang dimuat saat expand. Perubahan ditulis ke JSON asli child tanpa menghilangkan fokus saat mengetik.
+- Editor nested memakai validasi unique, opsi AJAX, codec tanggal, dan upload file yang sama dengan root, serta mempertahankan FK, readonly, dan metadata penyimpanan.
+- MonarchTextField biasa dikenali sebagai editor teks. Field tersembunyi, terenkripsi, atau dengan format angka khusus tetap menggunakan popup.
+
+## [2.13.5] - 2026-11-09
+
+### Diubah
+- Hover pada nested hanya menyorot sel baris data yang ditunjuk, mengikuti warna hover default Joget. Panel detail, header, baris lain, dan level child tetap memakai latar masing-masing.
+
+## [2.13.4] - 2026-11-09
+
+### Diperbaiki
+- Mode Design Form Builder menampilkan semua elemen child grid agar dapat dipilih dan diedit langsung, dengan keterangan Grid ID dan Form ID pada setiap grid.
+- Inisialisasi nested hanya berjalan pada Preview dan runtime, sehingga child grid tidak tersembunyi di canvas Design.
+
+## [2.13.3] - 2026-11-09
+
+### Diperbaiki
+- Enable Sorting Feature pada grid root otomatis menampilkan kolom No. tanpa harus mengaktifkan Show Row Number secara terpisah. Pengaturan nomor pada child tetap mengikuti relasi nested masing-masing.
+- Latar panel nested dan sel tabel tetap konsisten saat hover, termasuk efek hover tema yang menjangkau seluruh sel descendant.
+
+## [2.13.2] - 2026-11-09
+
+### Diperbaiki
+- State lazy load dari classloader OSGi lama di dalam sesi dibuang secara aman saat plugin diperbarui, sehingga pembukaan form tidak lagi gagal dengan ClassCastException.
+- Request dari halaman lama menerima respons session expired dan petunjuk reload, tanpa mengulang request yang sama terus-menerus.
+- Tes regresi menggunakan dua classloader dengan nama kelas State yang sama untuk mereproduksi kondisi upgrade plugin.
+
+## [2.13.1] - 2026-11-09
+
+### Diperbaiki
+- Tombol Add pada grid utama diberi jarak 24px dari tabel atau pagination, mengikuti tampilan Form Grid bawaan Joget. Tombol Import tetap sejajar dengan Add, termasuk saat pagination disembunyikan.
+
+## [2.13.0] - 2026-11-09
+
+### Diubah
+- Tabel dengan maksimal 10 baris menampilkan semua baris tanpa pagination; tabel lebih besar memakai pagination ringkas di kanan bawah.
+- Data child dengan multirow load binder baru diminta saat parent diekspansi, per level. Hasil per parent disimpan selama form terbuka, dengan indikator loading dan Retry.
+- Saat submit, baseline dari binder digabungkan dengan perubahan pada cabang yang dibuka agar data cabang lain tetap tersimpan. Parent harus dibuka sebelum dihapus untuk memeriksa child-nya.
+
+## [2.12.3] - 2026-11-09
+
+### Ditambahkan
+- Ikon **Open Item In Builder** pada Child Form ID untuk membuka Form terpilih di tab baru. Tautan mengikuti pilihan per baris, termasuk baris baru dan konfigurasi yang dimuat dari CSV.
+
 ## [2.12.2] - 2026-11-07
 
 ### Diubah

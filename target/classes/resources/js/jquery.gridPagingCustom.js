@@ -1,6 +1,7 @@
 (function( $ ){
     var defaults = {
-        size : 20
+        size : 10,
+        threshold : 10
     };
 
     var methods = {
@@ -115,62 +116,37 @@
                 $(thisObj).find(".pg-navigator").remove();
             }
 
-            // Joget keeps the navigator's spacing even when there is only one page.
-            $(table).after("<p class=\"pg-navigator\"></p>");
-
-            var pages = 1;
-            if (size > options.size) {
-                pages = Math.ceil(size / options.size);
-            } else {
-                return;
+            if (size <= options.threshold) return;
+            var pages = Math.max(1, Math.ceil(size / options.size));
+            var pager = $('<p class="pg-navigator" role="group" aria-label="Table pagination"></p>');
+            function control(label, className, title, target) {
+                return $('<button type="button">').addClass(className).text(label).attr('aria-label', title)
+                    .on('click.gridPagingCustom', function() {
+                        var current = Number(table.data('pagingPage')) || 1;
+                        methods.showPage.call(thisObj, target(current));
+                    });
             }
-
-            var pagerHtml = '<span class="pg-prev"> &#171; </span> | ';
-            for (var page = 1; page <= pages; page++) {
-                pagerHtml += '<span class="pg-normal" rel="'+page+'">' + page + '</span> | ';
-            }
-            pagerHtml += '<span class="pg-next"> &#187; </span>';
-
-            $(thisObj).find(".pg-navigator").html(pagerHtml);
-
-            $(thisObj).find(".pg-navigator .pg-prev").click(function(){
-                var prev = $(thisObj).find(".pg-navigator .pg-current").prev();
-                if ($(prev).hasClass("pg-normal")) {
-                    methods.showPage.call(thisObj, $(prev).attr("rel"));
-                }
-            });
-
-            $(thisObj).find(".pg-navigator .pg-next").click(function(){
-                var next = $(thisObj).find(".pg-navigator .pg-current").next();
-                if ($(next).hasClass("pg-normal")) {
-                    methods.showPage.call(thisObj, $(next).attr("rel"));
-                }
-            });
-
-            $(thisObj).find(".pg-navigator .pg-normal").click(function(){
-                if (!$(this).hasClass("pg-current")) {
-                    methods.showPage.call(thisObj, $(this).attr("rel"));
-                }
-            });
+            pager.append(control('«', 'pg-first', 'First page', function() { return 1; }),
+                control('‹', 'pg-prev', 'Previous page', function(page) { return page - 1; }),
+                $('<span class="pg-current" role="status" aria-live="polite">'),
+                control('›', 'pg-next', 'Next page', function(page) { return page + 1; }),
+                control('»', 'pg-last', 'Last page', function() { return pages; }));
+            table.after(pager);
         },
 
         showPage: function(page) {
             var thisObj = $(this);
 
-            //if page not exist, show page 1
-            if ($(thisObj).find(".pg-navigator .pg-normal[rel="+page+"]").length === 0) {
-                page = 1;
-            }
-
-            $(thisObj).find(".pg-navigator .pg-current").removeClass("pg-current");
-
             var table = $(thisObj).children("table");
-            var options = $(table).data("pagingOptions");
+            var options = table.data("pagingOptions");
+            var candidateRows = table.find("tr.grid-row").not(".fg-hidden");
+            var pageSize = candidateRows.length <= options.threshold ? Math.max(options.threshold, 1) : options.size;
+            var pages = Math.max(1, Math.ceil(candidateRows.length / pageSize));
+            page = Math.max(1, Math.min(Number(page) || 1, pages));
+            table.data('pagingPage', page);
+            var start = pageSize * (page - 1);
+            var end = pageSize * page;
 
-            var start = options.size * (page - 1);
-            var end = options.size * page;
-
-            var candidateRows = $(table).find("tr.grid-row").not(".fg-hidden"); // hanya row yg tidak difilter
             candidateRows.each(function(i) {
                 if (i >= start && i < end) {
                     $(this).addClass("pg-tr-show").removeClass("pg-tr-hide").show();
@@ -180,7 +156,10 @@
             });
 
 
-            $(thisObj).find(".pg-navigator .pg-normal[rel="+page+"]").addClass("pg-current");
+            var pager = thisObj.children('.pg-navigator');
+            pager.find('.pg-current').attr('rel', page).text(page + ' / ' + pages);
+            pager.find('.pg-first,.pg-prev').prop('disabled', page === 1);
+            pager.find('.pg-next,.pg-last').prop('disabled', page === pages);
             thisObj.triggerHandler('formgrid:pagechanged');
         }
     };

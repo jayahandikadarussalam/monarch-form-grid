@@ -58,4 +58,23 @@ public class FormGridEditableTest {
         bad.setProperty("name", "Budi");
         assertTrue(grid.validateEditableRows(rows, new FormData()));
     }
+    @Test public void plainMonarchTextFieldsReceiveEditorsButSpecializedValuesKeepThePopup() {
+        Grid grid = new Grid();
+        TextField monarch = new TextField() {
+            @Override public String getClassName() { return "id.co.itasoft.monarch.plugin.MonarchTextField"; }
+        };
+        monarch.setProperty("id", "monarch"); monarch.setParent(grid.form);
+        List<Element> children = new ArrayList<>(grid.form.getChildren()); children.add(monarch); grid.form.setChildren(children);
+        Map<String, Map<String, Object>> headers = grid.getHeaderMap(new FormData());
+        Map<String, Object> header = new HashMap<>(); header.put("label", "Monarch"); header.put("formatType", "text"); headers.put("monarch", header);
+        JSONArray columns = new JSONArray(grid.getEditableColumnsJson(headers, new FormData()));
+        assertEquals(2, columns.length()); assertEquals("TextField", columns.getJSONObject(1).getString("editor"));
+        for (String option : Arrays.asList("hiddenField", "encryption")) {
+            monarch.setProperty(option, "true");
+            assertEquals(1, new JSONArray(grid.getEditableColumnsJson(headers, new FormData())).length());
+            monarch.setProperty(option, "false");
+        }
+        monarch.setProperty("style", "euro");
+        assertEquals(1, new JSONArray(grid.getEditableColumnsJson(headers, new FormData())).length());
+    }
 }

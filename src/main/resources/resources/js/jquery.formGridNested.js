@@ -16,12 +16,15 @@
     $.fn.formGridNested = function(settings) {
         return this.each(function() {
             var root = $(this);
-            if (root.data('formGridNested')) return;
+            if (root.attr('data-builder-design') === 'true' || root.data('formGridNested')) return;
             var scope = root.closest('div.subform-container, form');
             if (!scope.length) scope = root.parent();
             var rootId = root.children('.formgrid-field-id').val() || root.attr('name');
             var nodes = new Map(), children = new Map(), expanded = new Set(), detailId = ++nextId;
             var pagination = new WeakMap();
+            var importers = new WeakMap();
+            var paginationThreshold = settings.paginationThreshold === undefined ? 10 : settings.paginationThreshold;
+            var bulkExpanded = false;
             var status = $('<div class="formgrid-nested-status form-error-message" role="alert" hidden>').prependTo(root);
             function error(message) { status.text(message).prop('hidden', !message); }
             function direct(id) { return children.get(id) || []; }
@@ -63,6 +66,9 @@
                             '. Save the nested mapping and reload the containing form.');
                     if (node.grid.data('nestedOwner') || node.grid.children('.formgrid-nested-config').length)
                         throw new Error('Configure nesting only on the root grid. Child grid is already nested: ' + node.gridId);
+                    node.loader = node.grid.children('.formgrid-nested-load');
+                    node.loads = new Map();
+                    node.baselineCounts = new Map();
                     nodes.set(node.gridId, node);
                     if (!children.has(node.parentGridId)) children.set(node.parentGridId, []);
                     children.get(node.parentGridId).push(node);
@@ -78,6 +84,43 @@
                 });
             } catch (problem) { error(problem.message); return; }
 
+            function loadState(node, key) {
+                return !node.loader || !node.loader.length || !key ? 'loaded' : node.loads.get(key);
+            }
+            function loadChildren(node, key) {
+                if (loadState(node, key) === 'loaded' || loadState(node, key) === 'loading') return;
+                node.loads.set(key, 'loading');
+                $.ajax({url: node.loader.attr('data-url'), method: 'POST', dataType: 'json',
+                    data: {token: node.loader.val(), parentKey: key}}).done(function(result) {
+                    try {
+                        if (!result || !Array.isArray(result.rows)) throw new Error('Invalid child data');
+                        var table = node.grid.children('table'), existing = new Set();
+                        rows(node.grid).each(function() { existing.add(text(read($(this)).id)); });
+                        result.rows.forEach(function(data) {
+                            if (!data || text(data[node.foreignKey]) !== key || !data.id) throw new Error('Invalid child row');
+                        });
+                        // Populate the canonical source without invoking Add or its popup/readonly checks.
+                        result.rows.forEach(function(data) {
+                            if (existing.has(text(data.id))) return;
+                            var row = table.find('tr.grid-row-template').first().clone().removeAttr('id')
+                                .removeClass('grid-row-template').addClass('grid-row').show();
+                            $.formGridCustom.decorateRow(row);
+                            $.formGridCustom.fillValue(node.grid, row, JSON.stringify(data));
+                            table.children('tbody').first().append(row);
+                            existing.add(text(data.id));
+                        });
+                        node.loads.set(key, 'loaded');
+                        if (typeof result.total === 'number' && isFinite(result.total)) node.baselineTotal = result.total;
+                        node.baselineCounts.set(key, result.rows.length);
+                        node.grid.children('.formgrid-nested-loaded').val(JSON.stringify(Array.from(node.loads.keys()).filter(function(parent) {
+                            return node.loads.get(parent) === 'loaded';
+                        })));
+                        node.grid.formGridCustom('refreshIndex');
+                        if (bulkExpanded && direct(node.gridId).length) rows(node.grid).each(function() { expanded.add(this); });
+                        node.grid.trigger('change');
+                    } catch (problem) { node.loads.set(key, 'error'); refresh(); }
+                }).fail(function(xhr) { node.loadExpired = xhr && xhr.status === 410; node.loads.set(key, 'error'); refresh(); });
+            }
             function matching(node, parentRow) {
                 var key = text(read(parentRow)[node.parentKey]);
                 if (!key) return $();
@@ -89,6 +132,8 @@
             function validateData() {
                 var problems = [];
                 nodes.forEach(function(node, id) {
+                    if (node.loads && Array.from(node.loads.values()).indexOf('loading') !== -1)
+                        problems.push('Wait for child rows to finish loading before saving.');
                     direct(id).forEach(function(child) {
                         var keys = new Set();
                         rows(node.grid).each(function() {
@@ -128,6 +173,58 @@
                     states.set(node.gridId, {page: 1, size: isFinite(size) && size >= 1 ? Math.floor(size) : 20});
                 }
                 return states.get(node.gridId);
+            }
+            function preserveImports(container) {
+                container.find('.formgrid-nested-import').each(function() {
+                    var host = $(this), session = host.data('nestedImportSession');
+                    if (session) session.open.detach();
+                    host.detach();
+                });
+            }
+            function importSession(node, parentRow) {
+                var options = node.grid.data('shadow-import-options');
+                if (!options || !$.fn.formGridImport) return null;
+                var sessions = importers.get(parentRow[0]);
+                if (!sessions) { sessions = new Map(); importers.set(parentRow[0], sessions); }
+                if (sessions.has(node.gridId)) return sessions.get(node.gridId);
+                var key = text(read(parentRow)[node.parentKey]);
+                var token = 'nested_import_' + detailId + '_' + (++nextId);
+                var panel = node.grid.children('.formgrid-import-panel').clone(false, false);
+                if (!panel.length) return null;
+                panel.find('[id]').removeAttr('id');
+                panel.attr({id: token + '_panel', 'aria-labelledby': token + '_title'}).prop('hidden', true);
+                panel.find('.formgrid-import-heading h4').attr('id', token + '_title');
+                var open = node.grid.children('.formgrid-import-open').clone(false, false)
+                    .removeAttr('id').addClass('formgrid-nested-import-open')
+                    .attr({'aria-controls': token + '_panel', 'aria-expanded': 'false'});
+                var host = $('<div class="formgrid-nested-import">').append(panel);
+                var session = {host: host, open: open};
+                host.data('nestedImportSession', session);
+                host.formGridImport($.extend({}, options, {
+                    targetGrid: node.grid, panel: panel, openButton: open,
+                    // The immediate parent FK is supplied by the nested view, never by the file.
+                    columns: options.columns.filter(function(column) { return column.id !== node.foreignKey; }),
+                    sortField: canSort(node) ? node.sortField : options.sortField,
+                    checkContext: function() {
+                        if (!canWrite(node.grid) || node.grid.hasClass('disabledAdd')) throw new Error('Adding rows is disabled for this grid.');
+                        if (!$.contains(scope[0], parentRow[0]) || !key || text(read(parentRow)[node.parentKey]) !== key)
+                            throw new Error('The parent row has changed or is unavailable. Reopen the form before importing.');
+                        if (loadState(node, key) !== 'loaded') throw new Error('Wait for child rows to finish loading before importing.');
+                    },
+                    fixedValues: function() { var values = {}; values[node.foreignKey] = key; return values; },
+                    existingCount: function() {
+                        var count = rows(node.grid).length;
+                        if (node.baselineTotal === undefined) return count;
+                        node.baselineCounts.forEach(function(loaded) { count -= loaded; });
+                        return Math.max(0, node.baselineTotal + count);
+                    },
+                    beforeCommit: function(batch) {
+                        var state = pageState(node, parentRow);
+                        state.page = Math.ceil((matching(node, parentRow).not('.fg-hidden').length + batch.rows.length) / state.size);
+                    }
+                }));
+                sessions.set(node.gridId, session);
+                return session;
             }
             function addCallback(node, parentRow) {
                 var grid = node.grid;
@@ -220,15 +317,31 @@
                 direct(id).forEach(function(node) {
                     var section = $('<section class="formgrid-nested-section">').attr('data-child-grid', node.gridId);
                     var heading = $('<div class="formgrid-nested-heading">').append($('<strong>').text(node.label || node.gridId));
+                    var headingActions = $('<div class="formgrid-nested-heading-actions">').appendTo(heading);
                     var key = text(read(parentRow)[node.parentKey]);
                     $.formGridCustom.showHidePlusIcon(node.grid);
                     if (canWrite(node.grid) && !node.grid.hasClass('disabledAdd')) {
-                        heading.append(button('Add', 'btn btn-primary formgrid-nested-add', function() { addChild(node, parentRow); })
+                        headingActions.append(button('Add', 'btn btn-primary formgrid-nested-add', function() { addChild(node, parentRow); })
                             .prepend('<i class="fas fa-plus" aria-hidden="true"></i> ')
                             .prop('disabled', !key || node.grid.children('.formgrid-custom-add').prop('disabled')));
                     }
                     section.append(heading);
+                    if (loadState(node, key) !== 'loaded') {
+                        var failed = loadState(node, key) === 'error';
+                        heading.find('.formgrid-nested-add').prop('disabled', true);
+                        section.append($('<p role="status">').text(failed ?
+                            (node.loadExpired ? 'Child data session expired after a plugin update or timeout. Reload the form to continue.' : 'Unable to load child rows.') : 'Loading child rows…'));
+                        if (failed) {
+                            if (!node.loadExpired) section.append(button('Retry', 'formgrid-nested-retry', function() { loadChildren(node, key); refresh(); }));
+                        } else loadChildren(node, key);
+                        content.append(section);
+                        return;
+                    }
                     if (!key) section.append($('<p>').text('Set the parent key before adding child rows.'));
+                    if (canWrite(node.grid) && !node.grid.hasClass('disabledAdd') && key) {
+                        var importer = importSession(node, parentRow);
+                        if (importer) { headingActions.append(importer.open); section.append(importer.host); }
+                    }
                     var table = $('<table class="formgrid-nested-table" cellspacing="0">'), header = $('<tr>'), body = $('<tbody>');
                     var fields = [], template = node.grid.children('table').find('tr.grid-row-template').first();
                     var showNumber = canSort(node) || template.find('span.grid-cell.rowNumber').length > 0;
@@ -262,26 +375,35 @@
                         renderPage();
                     });
                     var info = $('<span class="formgrid-nested-page-info" role="status" aria-live="polite">');
+                    var compactInfo = $('<span class="formgrid-nested-page-summary" aria-hidden="true">');
                     function navigate(page) { state.page = page; renderPage(); }
                     var first = button('«', 'formgrid-nested-page-first', function() { navigate(1); }).attr('aria-label', 'First page');
                     var previous = button('‹', 'formgrid-nested-page-prev', function() { navigate(state.page - 1); }).attr('aria-label', 'Previous page');
                     var next = button('›', 'formgrid-nested-page-next', function() { navigate(state.page + 1); }).attr('aria-label', 'Next page');
                     var last = button('»', 'formgrid-nested-page-last', function() { navigate(Math.ceil(matched.length / state.size)); }).attr('aria-label', 'Last page');
-                    pager.append($('<label class="formgrid-nested-page-size-label">').append($('<span>').text('Rows per page'), sizeSelect), info,
+                    pager.append($('<label class="formgrid-nested-page-size-label">').append($('<span>').text('Rows per page'), sizeSelect), info, compactInfo,
                         $('<div class="formgrid-nested-page-actions">').append(first, previous, next, last));
                     function renderPage() {
-                        var pages = Math.max(1, Math.ceil(matched.length / state.size));
+                        var pageSize = matched.length <= paginationThreshold ? Math.max(paginationThreshold, matched.length, 1) : state.size;
+                        var pages = Math.max(1, Math.ceil(matched.length / pageSize));
                         state.page = Math.max(1, Math.min(state.page, pages));
-                        var start = (state.page - 1) * state.size, end = Math.min(start + state.size, matched.length);
+                        var start = (state.page - 1) * pageSize, end = Math.min(start + pageSize, matched.length);
+                        preserveImports(body);
                         body.empty();
                         // Build only the active page, including expanded descendants.
                         matched.slice(start, end).each(function(offset) {
                             var index = start + offset;
                             var source = $(this), view = $('<tr class="formgrid-nested-row">');
                             if (showNumber) view.append($('<td class="formgrid-nested-row-number">').text(index + 1));
-                            fields.forEach(function(field) { view.append(displayCell(source.children('td').eq(field.index))); });
+                            var editable = canWrite(node.grid) && node.grid.data('formGridEditableApi');
+                            fields.forEach(function(field) {
+                                var cell = displayCell(source.children('td').eq(field.index));
+                                if (editable) cell.wrapInner($('<span>').attr('data-editable-field', field.key));
+                                view.append(cell);
+                            });
                             var actions = $('<td class="formgrid-nested-actions">').append(rowActions(node, parentRow, source, index, matched.length));
                             view.append(actions); body.append(view);
+                            if (editable) editable.renderRow(source, view);
                             if (direct(node.gridId).length) {
                                 toggle(node.gridId, source, view);
                                 if (expanded.has(source[0])) body.append($('<tr class="formgrid-nested-detail">')
@@ -291,9 +413,10 @@
                         if (!matched.length) body.append($('<tr>').append($('<td class="formgrid-nested-empty">')
                             .attr('colspan', header.children().length).text('No related records.')));
                         info.text('Showing ' + (matched.length ? start + 1 : 0) + '–' + end + ' of ' + matched.length + ' rows. Page ' + state.page + ' of ' + pages + '.');
+                        compactInfo.text((matched.length ? start + 1 : 0) + '–' + end + ' / ' + matched.length);
                         first.add(previous).prop('disabled', state.page === 1);
                         next.add(last).prop('disabled', state.page === pages);
-                        pager.prop('hidden', matched.length === 0);
+                        pager.prop('hidden', matched.length <= paginationThreshold);
                     }
                     renderPage();
                     section.append($('<div class="formgrid-nested-scroll">').append(table), pager); content.append(section);
@@ -319,7 +442,7 @@
                     var visible = !source.hasClass('fg-hidden') && !source.hasClass('pg-tr-hide') && source.css('display') !== 'none';
                     var cell = $(this).children('td');
                     // Keep expansion state across pages without rendering off-page subtrees.
-                    if (!visible) cell.empty();
+                    if (!visible) { preserveImports(cell); cell.empty(); }
                     else if (!cell.children().length) cell.append(build(rootId, source, lookup));
                     $(this).toggle(visible);
                 });
@@ -335,7 +458,9 @@
                 try {
                     var candidates = expandableRows(), current = new Set(candidates);
                     expanded.forEach(function(row) { if (!current.has(row)) expanded.delete(row); });
-                    root.children('table').find('tr.formgrid-nested-root-detail').remove();
+                    var details = root.children('table').find('tr.formgrid-nested-root-detail');
+                    preserveImports(details);
+                    details.remove();
                     rows(root).each(function() {
                         var row = $(this); toggle(rootId, row, row);
                         if (expanded.has(this)) row.after($('<tr class="formgrid-nested-root-detail">').data('parentRow', row)
@@ -347,9 +472,11 @@
                 } catch (problem) { error(problem.message); }
             }
             var collapseAll = button('Collapse all', 'formgrid-nested-bulk-action formgrid-nested-collapse-all', function() {
+                bulkExpanded = false;
                 expanded.clear(); refresh();
             });
             var expandAll = button('Expand all', 'formgrid-nested-bulk-action formgrid-nested-expand-all', function() {
+                bulkExpanded = true;
                 expandableRows().forEach(function(row) { expanded.add(row); });
                 refresh();
             });
@@ -366,17 +493,22 @@
                     // A read-only root must also lock child popups even when child properties are writable.
                     if (settings.readonly || root.hasClass('readonly')) node.grid.addClass('readonly');
                 }
-                node.grid.on('change.formGridNested', function(event) {
+                node.grid.on('change.formGridNested', function(event, change) {
                     if (event.target !== node.grid[0]) return;
                     if (id !== rootId) node.grid.closest('.form-cell').children('label').find('.form-error-message').remove();
+                    // Rebuilding on every keystroke would remove the focused nested editor.
+                    if (id !== rootId && change && change.editableRow && !change.editableFile) { error(validateData()); return; }
                     refresh();
                 });
-                node.grid.on('formgrid:validationerror.formGridNested', refresh);
+                node.grid.on('formgrid:validationerror.formGridNested', function() { error(validateData()); });
                 node.grid.on('formgrid:rowupdated.formGridNested', function() {
                     clearTimeout(refreshTimer);
                     refreshTimer = setTimeout(refresh, 0);
                 });
                 node.grid.on('formgrid:beforedelete.formGridNested', function(event, row) {
+                    if (direct(id).some(function(child) { return loadState(child, text(read(row)[child.parentKey])) !== 'loaded'; })) {
+                        event.preventDefault(); error('Expand this row to check its child records before deleting.'); return;
+                    }
                     if (hasChildren(id, $(row))) {
                         event.preventDefault(); error('Delete related child rows before deleting this parent row.');
                     }

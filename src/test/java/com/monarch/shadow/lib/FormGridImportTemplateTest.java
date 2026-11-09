@@ -33,6 +33,16 @@ public class FormGridImportTemplateTest {
     }
 
     private String render(boolean enabled, boolean readonly, String previewPageSize, boolean editable, boolean nested) throws Exception {
+        return render(enabled, readonly, previewPageSize, editable, nested, false, "true", "");
+    }
+
+    private String render(boolean enabled, boolean readonly, String previewPageSize, boolean editable, boolean nested,
+                          boolean nestedSource, String sorting, String rowNumbers) throws Exception {
+        return render(enabled, readonly, previewPageSize, editable, nested, nestedSource, sorting, rowNumbers, false);
+    }
+
+    private String render(boolean enabled, boolean readonly, String previewPageSize, boolean editable, boolean nested,
+                          boolean nestedSource, String sorting, String rowNumbers, boolean builderDesign) throws Exception {
         Configuration config = new Configuration();
         config.setTemplateExceptionHandler(TemplateExceptionHandler.RETHROW_HANDLER);
         Template template = new Template("FormGridCustom.ftl", new InputStreamReader(
@@ -42,13 +52,15 @@ public class FormGridImportTemplateTest {
         props.put("id", "items");
         props.put("label", "Example Grid");
         props.put("readonly", readonly ? "true" : "");
-        props.put("enableSorting", "true");
+        props.put("enableSorting", sorting);
+        props.put("showRowNumber", rowNumbers);
         props.put("sortField", "sort");
         if (previewPageSize != null) props.put("importPreviewPageSize", previewPageSize);
         Map<String, Object> model = new HashMap<>();
         model.put("element", Collections.singletonMap("properties", props));
         model.put("request", new Request());
         model.put("elementParamName", "items");
+        model.put("includeMetaData", builderDesign);
         model.put("appId", "testApp");
         model.put("appVersion", 1);
         model.put("effectiveFormDefId", "areass");
@@ -59,6 +71,7 @@ public class FormGridImportTemplateTest {
         model.put("importEnabled", enabled);
         model.put("editableEnabled", editable);
         model.put("nestedEnabled", nested);
+        model.put("nestedSource", nestedSource);
         model.put("nestedReadonly", readonly);
         model.put("nestedRelationsJson", "[{\"gridId\":\"areas\",\"label\":\"Areas <script> & \\\"quoted\\\"\",\"foreignKey\":\"plantId\"}]");
         model.put("editableColumnsJson", "[{\"id\":\"name\",\"label\":\"Name & <Label>\",\"editor\":\"TextField\"}]");
@@ -67,6 +80,35 @@ public class FormGridImportTemplateTest {
         StringWriter out = new StringWriter();
         template.process(model, out);
         return out.toString();
+    }
+
+    @Test
+    public void designModeKeepsGridsSelectableAndShowsIdsWhilePreviewKeepsNesting() throws Exception {
+        String design = render(false, false, null, false, true, false, "true", "", true);
+        assertTrue(design.contains("data-builder-design=\"true\""));
+        assertTrue(design.contains("Grid ID: <code>items</code>"));
+        assertTrue(design.contains("Form ID: <code>areass</code>"));
+        assertFalse(design.contains("grid.formGridNested({"));
+        String child = render(false, false, null, false, false, true, "false", "", true);
+        assertTrue(child.contains("class=\"formgrid-builder-info\""));
+        assertTrue(child.contains("Grid ID: <code>items</code>"));
+        String preview = render(false, false, null, false, true);
+        assertTrue(preview.contains("grid.formGridNested({"));
+        assertFalse(preview.contains("class=\"formgrid-builder-info\""));
+        assertFalse(preview.contains("data-builder-design=\"true\""));
+    }
+
+    @Test
+    public void rootSortingRendersRowNumbersWithoutEnablingTheSeparateNumberOption() throws Exception {
+        String sorted = render(false, false, null, false, true, false, "true", "false");
+        assertTrue(sorted.contains("<th class=\"formgrid-row-number\">No.</th>"));
+        assertTrue(sorted.contains("class=\"grid-cell rowNumber\""));
+        String plain = render(false, false, null, false, false, false, "false", "false");
+        assertFalse(plain.contains("class=\"grid-cell rowNumber\""));
+        String numbered = render(false, false, null, false, false, false, "false", "true");
+        assertTrue(numbered.contains("class=\"grid-cell rowNumber\""));
+        String child = render(false, false, null, false, false, true, "true", "false");
+        assertFalse(child.contains("class=\"grid-cell rowNumber\""));
     }
 
     @Test

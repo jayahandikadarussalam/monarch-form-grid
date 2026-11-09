@@ -17,14 +17,14 @@ function fixture(id) {
       <td style="display:none"><textarea id="${id}_jsonrow" name="${id}_jsonrow"></textarea></td></tr>
       </tbody></table><button type="button" class="formgrid-custom-add">Add</button></div></div>`;
 }
-function setup(relations = [{gridId:'areas',foreignKey:'parentId'},{gridId:'types',parentGridId:'areas',foreignKey:'parentId'}], {readonly=false, count=2, extraIds=[], seed} = {}) {
+function setup(relations = [{gridId:'areas',foreignKey:'parentId'},{gridId:'types',parentGridId:'areas',foreignKey:'parentId'}], {readonly=false, count=2, extraIds=[], seed, paginationThreshold=0} = {}) {
     const dom = new JSDOM(`<form>${['plants','areas','types','other',...extraIds].map(fixture).join('')}<button type="submit">Save</button></form>`, {runScripts:'outside-only',url:'https://example.test/'});
     const window = dom.window, $ = jquery(window), popups = [];
     window.$ = window.jQuery = $;
     window.UI = {escapeHTML:value=>$('<span>').text(value == null ? '' : value).html(),userviewThemeParams:()=>''};
     window.JPopup = {hide(){},show(...args){popups.push(args);}};
     window.confirm = ()=>true;
-    for (const file of ['jquery.formGridCustom.js','jquery.utils.js','jquery.formGridCustom.remake.js','jquery.gridPagingCustom.js','jquery.formGridEditable.js','jquery.formGridNested.js']) window.eval(fs.readFileSync(path.join(base,file),'utf8'));
+    for (const file of ['jquery.formGridCustom.js','jquery.utils.js','jquery.formGridCustom.remake.js','jquery.gridPagingCustom.js','jquery.formGridEditable.js','formGridImport.js','jquery.formGridImport.js','jquery.formGridNested.js']) window.eval(fs.readFileSync(path.join(base,file),'utf8'));
     const grid=id=>$('#grid_'+id);
     $('.formgrid-custom').formGridCustom({messages:{},options:{}});
     function add(id,data) {grid(id).formGridCustom('addRow',{result:JSON.stringify(data)}); return grid(id).children('table').find('tr.grid-row').last();}
@@ -34,9 +34,9 @@ function setup(relations = [{gridId:'areas',foreignKey:'parentId'},{gridId:'type
     add('areas',{id:'a2',name:'Area Two',parentId:'p2'});
     add('types',{id:'t1',name:'Type One',parentId:'a1'});
     if (seed) seed({grid,add});
-    grid('plants').gridPagingCustom({customSize:count});
+    grid('plants').gridPagingCustom({customSize:count,threshold:paginationThreshold});
     if (readonly) grid('plants').addClass('readonly');
-    grid('plants').formGridNested({relations});
+    grid('plants').formGridNested({relations,paginationThreshold});
     const expand=row=>row.children('.formgrid-nested-togglecell').find('button').trigger('click');
     const data=row=>JSON.parse(row.find('textarea:not(.formgrid-editor)').first().val());
     return {dom,window,$,grid,add,first,second,area,popups,expand,data};
@@ -527,7 +527,7 @@ test('ordinary grid duplicate still follows its popup setting when no nested mod
 test('nested views preserve configured column order, labels, widths and visibility for existing and added rows',t=>{
     const s=setup([{gridId:'areas',foreignKey:'parentId'}],{seed({grid}){
         const area=grid('areas');
-        // Represents the source grid rendered by Java with its effective Nested Columns.
+        // Represents the source grid rendered by Java with its configured child Columns.
         area.children('table').find('thead tr').prepend('<th style="width:140px">Area Code</th>');
         area.children('table').find('tbody tr').each(function(){
             const row=grid('areas').find(this);
@@ -622,4 +622,369 @@ test('bulk controls are scoped to their own root and handle empty grids and newl
     assert.equal(root.find('.formgrid-nested-expand-all').prop('disabled'),false);
     root.find('.formgrid-nested-expand-all').trigger('click');assert.equal(root.find('.formgrid-nested-expand-all').prop('disabled'),true);
     root.formGridNested({relations:[]});assert.equal(root.children('.formgrid-nested-bulk-actions').length,1);
+});
+
+test('default pagination hides through ten rows and returns above ten after add/delete/filter',t=>{
+    const s=setup([{gridId:'areas',foreignKey:'parentId'}],{paginationThreshold:10,seed({grid,add}){
+        for(let i=2;i<=10;i++) add('areas',{id:'limit'+i,parentId:'p1',name:'Area '+i});
+        grid('areas').gridPagingCustom({customSize:10});
+    }});t.after(()=>s.dom.window.close());s.expand(s.first);
+    assert.equal(sectionRows(s).length,10);assert.equal(nestedPager(s).prop('hidden'),true);
+    s.add('areas',{id:'eleventh',parentId:'p1',name:'Eleventh'});
+    assert.equal(sectionRows(s).length,10);assert.equal(nestedPager(s).prop('hidden'),false);
+    assert.equal(nestedPager(s).find('button').length,4);
+    nestedPager(s).find('.formgrid-nested-page-next').trigger('click');
+    assert.equal(sectionRows(s).length,1);assert.match(sectionRows(s).text(),/Eleventh/);
+    sectionRows(s).find('.formgrid-nested-delete').trigger('click');
+    assert.equal(sectionRows(s).length,10);assert.equal(nestedPager(s).prop('hidden'),true);
+    s.grid('areas').children('table').find('.grid-row').addClass('fg-hidden');s.grid('areas').trigger('change');
+    assert.equal(nestedPager(s).prop('hidden'),true);assert.equal(sectionRows(s).length,0);
+    assert.match(s.first.next().text(),/No related records/);
+});
+test('small tables show all rows even when a smaller old page size was configured',t=>{
+    const s=setup(undefined,{paginationThreshold:10,seed:pagedSeed});t.after(()=>s.dom.window.close());
+    s.expand(s.first);assert.equal(sectionRows(s).length,3);assert.equal(nestedPager(s).prop('hidden'),true);
+    assert.equal(s.grid('plants').children('.pg-navigator').length,0);
+    assert.equal(s.grid('plants').find('tr.pg-tr-hide').length,0);
+});
+test('main grid uses bounded compact controls only above ten rows',t=>{
+    const s=setup(undefined,{paginationThreshold:10,count:10});t.after(()=>s.dom.window.close());
+    for(let i=3;i<=11;i++)s.add('plants',{id:'p'+i,name:'Plant '+i});
+    const pager=s.grid('plants').children('.pg-navigator');
+    assert.equal(pager.find('button').length,4);assert.equal(pager.find('.pg-current').text(),'1 / 2');
+    pager.find('.pg-next').trigger('click');assert.equal(pager.find('.pg-current').text(),'2 / 2');
+    assert.equal(s.grid('plants').children('table').find('.grid-row.pg-tr-show').length,1);
+    s.grid('plants').children('table').find('.grid-row').last().remove();s.grid('plants').trigger('change');
+    assert.equal(s.grid('plants').children('.pg-navigator').length,0);
+    assert.equal(s.grid('plants').children('table').find('.grid-row.pg-tr-show').length,10);
+});
+function lazySeed(requests) {
+    return function({grid}) {
+        const $=grid('areas').constructor;
+        $.ajax=options=>{const deferred=$.Deferred();requests.push({options,deferred});return deferred.promise();};
+        for(const id of ['areas','types']) {
+            grid(id).children('table').find('.grid-row').remove();
+            grid(id).prepend(`<input disabled class="formgrid-nested-load" data-url="/nested/service" value="token-${id}"><input class="formgrid-nested-loaded" name="${id}_nested_loaded" value="[]">`);
+        }
+    };
+}
+test('child requests wait for expansion at each level and remain isolated per parent',t=>{
+    const requests=[],s=setup(undefined,{seed:lazySeed(requests)});t.after(()=>s.dom.window.close());
+    assert.equal(requests.length,0);s.expand(s.first);
+    assert.equal(requests.length,1);assert.equal(requests[0].options.data.parentKey,'p1');
+    assert.equal(requests[0].options.data.token,'token-areas');assert.equal(requests[0].options.method,'POST');
+    let event=s.$.Event('submit');s.$('form').triggerHandler(event);assert.equal(event.isDefaultPrevented(),true);
+    s.expand(s.first);assert.equal(requests.length,1);
+    requests[0].deferred.resolve({rows:[{id:'lazyArea',name:'Deferred Area',parentId:'p1'}]});
+    assert.equal(s.first.next().hasClass('formgrid-nested-root-detail'),false);
+    s.expand(s.first);assert.match(s.first.next().text(),/Deferred Area/);assert.equal(requests.length,1);
+    assert.equal(s.grid('areas').children('.formgrid-nested-loaded').val(),'["p1"]');
+    sectionRows(s).first().find('.formgrid-nested-toggle').trigger('click');
+    assert.equal(requests.length,2);assert.equal(requests[1].options.data.parentKey,'lazyArea');
+    assert.equal(requests[1].options.data.token,'token-types');
+    requests[1].deferred.resolve({rows:[{id:'lazyType',name:'Deferred Type',parentId:'lazyArea'}]});
+    assert.match(s.first.next().text(),/Deferred Type/);
+    s.expand(s.second);assert.equal(requests.length,3);assert.equal(requests[2].options.data.parentKey,'p2');
+    requests[2].deferred.resolve({rows:[]});assert.match(s.second.next().text(),/No related records/);
+    s.expand(s.second);s.expand(s.second);assert.equal(requests.length,3);
+    assert.equal(s.grid('types').getValues().length,1);
+});
+test('failed expansion can retry; unopened parents cannot be deleted without checking children',t=>{
+    const requests=[],s=setup(undefined,{seed:lazySeed(requests)});t.after(()=>s.dom.window.close());
+    s.first.find('.grid-action-delete').trigger('click');assert.equal(requests.length,0);
+    assert.equal(s.grid('plants').getValues().length,2);
+    assert.match(s.grid('plants').children('.formgrid-nested-status').text(),/Expand this row/);
+    s.expand(s.first);requests[0].deferred.reject();
+    assert.match(s.first.next().text(),/Unable to load child/);
+    assert.equal(s.grid('areas').children('.formgrid-nested-loaded').val(),'[]');
+    s.first.next().find('.formgrid-nested-retry').trigger('click');assert.equal(requests.length,2);
+    requests[1].deferred.resolve({rows:[]});assert.match(s.first.next().text(),/No related records/);
+    assert.equal(s.grid('areas').children('.formgrid-nested-loaded').val(),'["p1"]');
+});
+test('readonly lazy rows hydrate without opening popups or allowing writes',t=>{
+    const requests=[],s=setup(undefined,{readonly:true,seed:lazySeed(requests)});t.after(()=>s.dom.window.close());
+    s.expand(s.first);requests[0].deferred.resolve({rows:[{id:'readArea',name:'Read Only Area',parentId:'p1'}]});
+    assert.match(s.first.next().text(),/Read Only Area/);
+    assert.equal(s.first.next().find('.formgrid-nested-add,.formgrid-nested-edit,.formgrid-nested-delete').length,0);
+    assert.equal(s.popups.length,0);
+});
+
+test('bulk expand requests only visible parents and keeps deeper children deferred until available',t=>{
+    const requests=[],s=setup(undefined,{count:1,seed:lazySeed(requests)});t.after(()=>s.dom.window.close());
+    s.grid('plants').find('.formgrid-nested-expand-all').trigger('click');
+    assert.equal(requests.length,1);assert.equal(requests[0].options.data.parentKey,'p1');
+    requests[0].deferred.resolve({rows:[{id:'bulkArea',name:'Bulk Area',parentId:'p1'}]});
+    assert.equal(requests.length,2);assert.equal(requests[1].options.data.parentKey,'bulkArea');
+    requests[1].deferred.resolve({rows:[]});
+    s.grid('plants').gridPagingCustom('showPage',2);
+    assert.equal(requests.length,3);assert.equal(requests[2].options.data.parentKey,'p2');
+    s.grid('plants').find('.formgrid-nested-collapse-all').trigger('click');
+    requests[2].deferred.resolve({rows:[{id:'bulkArea2',name:'Bulk Area 2',parentId:'p2'}]});
+    assert.equal(requests.length,3);assert.equal(s.grid('plants').find('.formgrid-nested-root-detail').length,0);
+});
+
+test('expired tokens after plugin updates request a form reload without retry loops or losing rows',t=>{
+    const requests=[],s=setup(undefined,{seed:lazySeed(requests)});t.after(()=>s.dom.window.close());
+    s.expand(s.first);requests[0].deferred.reject({status:410});
+    assert.match(s.first.next().text(),/Reload the form/);
+    assert.equal(s.first.next().find('.formgrid-nested-retry').length,0);
+    assert.equal(requests.length,1);
+    s.grid('plants').data('formGridNested').refresh();assert.equal(requests.length,1);
+    assert.equal(s.grid('plants').getValues().length,2);
+    assert.equal(s.grid('areas').children('.formgrid-nested-loaded').val(),'[]');
+});
+
+test('Design canvas leaves all child grids visible and avoids nested requests or runtime controls',t=>{
+    const requests=[],seed=lazySeed(requests);
+    const s=setup(undefined,{seed(context){
+        seed(context);
+        context.grid('plants').attr('data-builder-design','true');
+        // Represents Joget's metadata wrapper used to select each element on the canvas.
+        context.grid('areas').closest('.form-cell').attr('element-class','com.monarch.shadow.lib.FormGridCustom');
+        context.grid('types').closest('.form-cell').attr('element-class','com.monarch.shadow.lib.FormGridCustom');
+    }});t.after(()=>s.dom.window.close());
+    assert.equal(requests.length,0);
+    for(const id of ['plants','areas','types']) {
+        assert.equal(s.grid(id).closest('.form-cell').hasClass('formgrid-nested-source'),false);
+        assert.equal(s.grid(id).data('nestedOwner'),undefined);
+    }
+    assert.equal(s.grid('plants').find('.formgrid-nested-bulk-actions,.formgrid-nested-toggle,.formgrid-nested-status').length,0);
+    assert.equal(s.grid('areas').closest('[element-class]').length,1);
+    assert.equal(s.grid('types').closest('[element-class]').length,1);
+});
+
+function inlineFields(grid, columns) {
+    const $=grid.constructor,table=grid.children('table');
+    for(const column of columns) {
+        if(table.find('.grid-row-template [column_key="'+column.id+'"]').length)continue;
+        table.find('thead tr').append($('<th>').text(column.label||column.id));
+        table.find('tbody tr').each(function(){
+            $(this).append($('<td>').append($('<span class="grid-cell">').attr({column_key:column.id,column_type:'text'})));
+        });
+    }
+    grid.formGridEditable({columns});
+}
+test('nested inline text edits preserve focus, sibling rows, FK and canonical submission across collapse',t=>{
+    const s=setup(undefined,{seed({grid}){inlineFields(grid('areas'),[{id:'name',label:'Name',editor:'TextField'}]);
+        inlineFields(grid('types'),[{id:'name',label:'Name',editor:'TextField'}]);}});
+    t.after(()=>s.dom.window.close());s.expand(s.first);
+    const input=sectionRows(s).first().find('.formgrid-editor');assert.equal(input.length,1);
+    input[0].focus();input.val('Edited Area').trigger('input');
+    assert.equal(s.window.document.activeElement,input[0]);assert.equal(sectionRows(s).first().find('.formgrid-editor')[0],input[0]);
+    assert.equal(s.data(s.area).name,'Edited Area');assert.equal(s.data(s.area).parentId,'p1');
+    assert.equal(s.grid('areas').getValues()[1].name,'Area Two');
+    const submitted=s.$('form').serializeArray().filter(pair=>/^areas_jsonrow_\d+$/.test(pair.name));
+    assert.equal(submitted.length,2);assert.equal(JSON.parse(submitted[0].value).name,'Edited Area');
+    sectionRows(s).first().find('.formgrid-nested-toggle').trigger('click');
+    s.first.next().find('[data-child-grid="types"] .formgrid-editor').val('Edited Type').trigger('input');
+    assert.equal(s.grid('types').getValues()[0].name,'Edited Type');
+    s.expand(s.first);s.expand(s.first);assert.equal(sectionRows(s).first().find('.formgrid-editor').val(),'Edited Area');
+});
+test('nested native option/date/multiline editors persist raw values and surface uniqueness failures',t=>{
+    const columns=[{id:'name',editor:'TextField'},{id:'note',editor:'TextArea'},
+        {id:'role',editor:'SelectBox',options:{admin:'Administrator',user:'User'}},
+        {id:'date',editor:'DatePicker',dateFormat:'dd/MM/yyyy'}];
+    const s=setup(undefined,{seed({grid}){
+        grid('areas').updateRowData(data=>{data.note='Original';data.role='admin';data.date='09/11/2026';});
+        grid('areas').prepend('<input disabled class="uniqueKey" value="name">');inlineFields(grid('areas'),columns);
+    }});t.after(()=>s.dom.window.close());s.expand(s.first);
+    const view=sectionRows(s).first(),editor=id=>view.find('.formgrid-editor').filter(function(){return s.$(this).data('column').id===id;});
+    assert.equal(editor('date').val(),'2026-11-09');
+    editor('role').val('user').trigger('change');editor('date').val('2026-12-10').trigger('change');
+    editor('note').val('Two\nlines').trigger('input');
+    assert.equal(s.data(s.area).role,'user');assert.equal(s.data(s.area).date,'10/12/2026');assert.equal(s.data(s.area).note,'Two\nlines');
+    editor('name').val('Area Two').trigger('input');
+    assert.equal(s.data(s.area).name,'Area One');assert.equal(editor('name').val(),'Area One');
+    assert.match(s.grid('plants').children('.formgrid-nested-status').text(),/unique value/);
+});
+test('nested inline AJAX options follow visible control values and ignore views removed by collapse',t=>{
+    const requests=[];
+    const s=setup(undefined,{seed({grid}){
+        const $=grid('areas').constructor;
+        $.getJSON=(url,data)=>{const deferred=$.Deferred();requests.push({data,deferred});return deferred.promise();};
+        inlineFields(grid('areas'),[{id:'name',editor:'TextField'},{id:'role',editor:'SelectBox',
+            options:{OPTIONS_USE_AJAX:'true',OPTIONS:[],OPTIONS_AJAX_CONTROL_FIELD:'name',OPTIONS_AJAX_APP_ID:'app',OPTIONS_AJAX_APP_VERSION:'1'}}]);
+    }});t.after(()=>s.dom.window.close());s.expand(s.first);
+    const view=sectionRows(s).first(),name=view.find('input.formgrid-editor'),select=view.find('select.formgrid-editor');
+    requests.at(-1).deferred.resolve([{value:'a',label:'Original'}]);
+    name.val('Changed').trigger('input');assert.equal(requests.at(-1).data._dv,'Changed');
+    requests.at(-1).deferred.resolve([{value:'b',label:'Updated'}]);assert.equal(select.find('option').last().text(),'Updated');
+    name.val('Later').trigger('input');const pending=requests.at(-1);s.expand(s.first);
+    pending.deferred.resolve([{value:'stale',label:'Stale'}]);
+    s.expand(s.first);assert.notEqual(sectionRows(s).first().find('select option').last().text(),'Stale');
+});
+test('nested lazy rows receive editors after fetching while a readonly root renders display values',t=>{
+    for(const readonly of [false,true]) {
+        const requests=[],lazy=lazySeed(requests);
+        const s=setup(undefined,{readonly,seed(context){lazy(context);inlineFields(context.grid('areas'),[{id:'name',editor:'TextField'}]);}});
+        t.after(()=>s.dom.window.close());s.expand(s.first);
+        requests[0].deferred.resolve({rows:[{id:'fetched',name:'Lazy Inline',parentId:'p1'}]});
+        assert.equal(sectionRows(s).find('.formgrid-editor').length,readonly?0:1);
+        if(!readonly){sectionRows(s).find('.formgrid-editor').val('Changed Lazy').trigger('input');assert.equal(s.grid('areas').getValues()[0].name,'Changed Lazy');}
+        else assert.match(sectionRows(s).text(),/Lazy Inline/);
+    }
+});
+test('nested inline file upload blocks submit, stores its path and keeps its parent relation',async t=>{
+    const s=setup(undefined,{seed({grid}){inlineFields(grid('areas'),[{id:'name',editor:'TextField'},
+        {id:'file',editor:'FileUpload',uploadUrl:'/upload',paramName:'file',maxSize:'10'}]);}});
+    t.after(()=>s.dom.window.close());s.expand(s.first);
+    const request=s.$.Deferred();s.$.ajax=()=>request.promise();
+    const input=sectionRows(s).find('input[type=file]');
+    Object.defineProperty(input[0],'files',{value:[new s.window.File(['PDF'],'nested.pdf')],configurable:true});input.trigger('change');
+    await new Promise(resolve=>setTimeout(resolve,0));
+    assert.equal(s.$('form :submit').prop('disabled'),true);
+    request.resolve({newFilename:'nested.pdf',path:'temp/nested.pdf'});
+    for(let i=0;i<10&&s.grid('areas').data('editableUploads');i++)await new Promise(resolve=>setTimeout(resolve,5));
+    assert.equal(s.data(s.area).file,'nested.pdf');assert.equal(s.data(s.area).parentId,'p1');
+    assert.deepEqual(s.data(s.area)._tempFilePathMap.file,['temp/nested.pdf']);
+    assert.equal(s.$('form :submit').prop('disabled'),false);
+    assert.match(sectionRows(s).find('.formgrid-editable-filenames').text(),/nested.pdf/);
+});
+
+const nestedXlsx=require(path.join(base,'vendor/xlsx.full.min.js'));
+function nestedImportSeed(ids=['types'],columns=[{id:'name',label:'Name',type:'text'},{id:'parentId',label:'Parent',type:'text'}]) {
+    return function({grid}) {
+        const $=grid('plants').constructor,window=grid('plants')[0].ownerDocument.defaultView;
+        $.ajax=options=>{assert.equal(options.dataType,'script');window.XLSX=nestedXlsx;return $.Deferred().resolve().promise();};
+        for(const id of ids) {
+            grid(id).append(`<button type="button" class="formgrid-import-open" aria-expanded="false">Import Excel / CSV</button>
+                <div class="formgrid-import-panel" id="${id}_panel" aria-labelledby="${id}_title" hidden>
+                    <div class="formgrid-import-heading"><h4 id="${id}_title">Import Data</h4><button type="button" class="formgrid-import-template">Download Excel Template</button></div>
+                    <input type="file" class="formgrid-import-file"><label class="formgrid-import-sheet-label" hidden><select class="formgrid-import-sheet"></select></label>
+                    <p class="formgrid-import-status"></p><div class="formgrid-import-preview"></div>
+                    <div class="formgrid-import-pagination" hidden><select class="formgrid-import-page-size"><option>10</option><option>20</option><option>50</option><option>100</option></select>
+                        <span class="formgrid-import-page-info"></span><button type="button" class="formgrid-import-previous">Previous</button><button type="button" class="formgrid-import-next">Next</button></div>
+                    <button type="button" class="formgrid-import-confirm" disabled>Import Rows</button><button type="button" class="formgrid-import-cancel">Cancel</button>
+                </div>`);
+            grid(id).formGridImport({columns,sortField:'',libraryUrl:'/parser.js'});
+        }
+    };
+}
+function childSection(s,parent,id){return parent.next().find('[data-child-grid="'+id+'"]').first();}
+async function nestedImportFile(section,content,name='rows.csv') {
+    const host=section.children('.formgrid-nested-import'),input=host.find('.formgrid-import-file');
+    assert.equal(input.length,1);
+    const bytes=Buffer.isBuffer(content)?content:Buffer.from(content);
+    Object.defineProperty(input[0],'files',{configurable:true,value:[{name,size:bytes.length,arrayBuffer:async()=>bytes}]});
+    section.children('.formgrid-nested-heading').find('.formgrid-nested-import-open').trigger('click');input.trigger('change');
+    for(let i=0;i<100;i++){
+        if(!host.find('.formgrid-import-status').text().includes('Reading file'))return host;
+        await new Promise(resolve=>setTimeout(resolve,5));
+    }
+    throw new Error('Nested import did not finish reading the file');
+}
+test('enabled nested import uses the root workflow and assigns rows to the immediate parent',async t=>{
+    const s=setup(undefined,{seed:nestedImportSeed()});t.after(()=>s.dom.window.close());s.expand(s.first);
+    assert.equal(childSection(s,s.first,'areas').find('.formgrid-nested-import-open').length,0);
+    sectionRows(s).first().find('.formgrid-nested-toggle').trigger('click');
+    const section=childSection(s,s.first,'types');assert.equal(section.find('.formgrid-nested-import-open').length,1);
+    const host=await nestedImportFile(section,'name\nImported Group A\nImported Group B');
+    assert.equal(s.grid('types').getValues().length,1);assert.equal(host.find('.formgrid-import-preview tbody tr').length,2);
+    host.find('.formgrid-import-confirm').trigger('click');
+    const values=Array.from(s.grid('types').getValues());assert.equal(values.length,3);
+    for(const row of values.slice(1)){assert.equal(row.parentId,'a1');assert.match(row.id,/^[0-9a-f-]{36}$/);}
+    assert.equal(s.grid('areas').getValues().length,2);assert.equal(s.grid('plants').getValues().length,2);
+    const current=childSection(s,s.first,'types').children('.formgrid-nested-import');
+    assert.equal(current[0],host[0]);assert.match(current.find('.formgrid-import-status').text(),/2 rows imported/);
+    assert.equal(s.$('form').serializeArray().filter(p=>/^types_jsonrow_\d+$/.test(p.name)).length,3);
+    assert.equal(current.find('textarea[name]').length,0);
+});
+test('nested import previews stay bound to their parent across collapse and sibling imports',async t=>{
+    const s=setup(undefined,{seed:nestedImportSeed(['areas'])});t.after(()=>s.dom.window.close());s.expand(s.first);
+    const firstHost=await nestedImportFile(childSection(s,s.first,'areas'),'name\nFirst Parent Import');
+    s.expand(s.first);s.expand(s.second);
+    const secondHost=await nestedImportFile(childSection(s,s.second,'areas'),'name\nSecond Parent Import');
+    assert.notEqual(firstHost[0],secondHost[0]);assert.notEqual(firstHost.children('.formgrid-import-panel').attr('id'),secondHost.children('.formgrid-import-panel').attr('id'));
+    secondHost.find('.formgrid-import-confirm').trigger('click');
+    assert.equal(s.grid('areas').getValues().find(row=>row.name==='Second Parent Import').parentId,'p2');
+    s.expand(s.first);
+    assert.equal(childSection(s,s.first,'areas').children('.formgrid-nested-import')[0],firstHost[0]);
+    assert.equal(firstHost.find('.formgrid-import-preview tbody tr').length,1);
+    firstHost.find('.formgrid-import-confirm').trigger('click');
+    assert.equal(s.grid('areas').getValues().find(row=>row.name==='First Parent Import').parentId,'p1');
+});
+test('nested imports reject FK columns, enforce unique/max rows and recheck limits at confirmation',async t=>{
+    const s=setup(undefined,{seed:nestedImportSeed(['areas'])});t.after(()=>s.dom.window.close());s.expand(s.first);
+    let section=childSection(s,s.first,'areas');
+    s.grid('areas').prepend('<input disabled class="uniqueKey" value="name">');
+    let host=await nestedImportFile(section,'name,parentId\nWrong Parent,p2');
+    assert.match(host.find('.formgrid-import-status').text(),/Unknown header/);assert.equal(s.grid('areas').getValues().length,2);
+    host=await nestedImportFile(section,'name\nArea Two');assert.match(host.find('.formgrid-import-status').text(),/duplicate/);
+    s.grid('areas').children('#validateMaxRow').val('3');
+    host=await nestedImportFile(section,'name\nNew A\nNew B');assert.match(host.find('.formgrid-import-status').text(),/maximum/);
+    host=await nestedImportFile(section,'name\nAllowed');assert.equal(host.find('.formgrid-import-confirm').prop('disabled'),false);
+    s.add('areas',{id:'concurrent',name:'Concurrent',parentId:'p2'});
+    host.find('.formgrid-import-confirm').trigger('click');assert.match(host.find('.formgrid-import-status').text(),/maximum/);
+    assert.equal(s.grid('areas').getValues().some(row=>row.name==='Allowed'),false);
+});
+test('nested import is unavailable in readonly and disabled Add grids and waits for lazy rows',t=>{
+    for(const readonly of [true,false]) {
+        const s=setup(undefined,{readonly,seed(context){nestedImportSeed(['areas'])(context);if(!readonly)context.grid('areas').addClass('disabledAdd');}});
+        t.after(()=>s.dom.window.close());s.expand(s.first);
+        assert.equal(childSection(s,s.first,'areas').find('.formgrid-nested-import-open').length,0);
+    }
+    const requests=[],s=setup(undefined,{seed(context){
+        nestedImportSeed(['areas'])(context);lazySeed(requests)(context);
+    }});t.after(()=>s.dom.window.close());s.expand(s.first);
+    assert.equal(childSection(s,s.first,'areas').find('.formgrid-nested-import-open').length,0);
+    requests[0].deferred.resolve({rows:[]});
+    assert.equal(childSection(s,s.first,'areas').find('.formgrid-nested-import-open').length,1);
+});
+test('nested Excel imports open the last page, preserve editors and support cancel without adding rows',async t=>{
+    const s=setup([{gridId:'areas',foreignKey:'parentId'}],{paginationThreshold:10,seed(context){
+        nestedImportSeed(['areas'])(context);context.grid('areas').gridPagingCustom({customSize:10});
+        inlineFields(context.grid('areas'),[{id:'name',editor:'TextField'}]);
+    }});t.after(()=>s.dom.window.close());s.expand(s.first);
+    const wb=nestedXlsx.utils.book_new();nestedXlsx.utils.book_append_sheet(wb,nestedXlsx.utils.aoa_to_sheet([['name'],...Array.from({length:11},(_,i)=>['Excel '+i])]),'Rows');
+    const bytes=nestedXlsx.write(wb,{type:'buffer',bookType:'xlsx'});
+    let host=await nestedImportFile(childSection(s,s.first,'areas'),bytes,'rows.xlsx');
+    host.find('.formgrid-import-cancel').trigger('click');assert.equal(s.grid('areas').getValues().length,2);
+    host=await nestedImportFile(childSection(s,s.first,'areas'),bytes,'rows.xlsx');host.find('.formgrid-import-confirm').trigger('click');
+    assert.equal(s.grid('areas').getValues().length,13);assert.match(nestedPager(s).text(),/Page 2 of 2/);
+    assert.equal(sectionRows(s).length,2);assert.equal(sectionRows(s).find('.formgrid-editor').length,2);
+    sectionRows(s).last().find('.formgrid-editor').val('Edited Imported').trigger('input');
+    assert.equal(s.grid('areas').getValues().find(row=>row.name==='Edited Imported').parentId,'p1');
+});
+test('nested import template excludes managed FK/sort columns and downloads without navigating',async t=>{
+    const s=setup([{gridId:'areas',foreignKey:'parentId',sortWithButtons:'true',sortField:'order'}],{seed:nestedImportSeed(['areas'],[
+        {id:'name',label:'Name',type:'text'},{id:'parentId',type:'text'},{id:'order',type:'text'},{id:'file',type:'file'}])});
+    t.after(()=>s.dom.window.close());s.expand(s.first);
+    let blob,download;
+    s.window.URL.createObjectURL=value=>{blob=value;return 'blob:nested-template';};s.window.URL.revokeObjectURL=()=>{};
+    s.window.HTMLAnchorElement.prototype.click=function(){download=this.download;};
+    childSection(s,s.first,'areas').children('.formgrid-nested-import').find('.formgrid-import-template').trigger('click');
+    for(let i=0;i<100&&!blob;i++)await new Promise(resolve=>setTimeout(resolve,5));
+    assert.equal(download,'form-grid-template.xlsx');
+    const headers=await new Promise((resolve,reject)=>{
+        const reader=new s.window.FileReader();reader.onload=()=>{const wb=nestedXlsx.read(new Uint8Array(reader.result),{type:'array'});resolve(nestedXlsx.utils.sheet_to_json(wb.Sheets.Import_Data,{header:1}));};reader.onerror=reject;reader.readAsArrayBuffer(blob);
+    });
+    assert.deepEqual(headers,[['name']]);
+});
+
+test('lazy nested import includes unopened branches in its row limit and preserves load markers',async t=>{
+    const requests=[];
+    const s=setup([{gridId:'areas',foreignKey:'parentId'}],{seed(context){
+        nestedImportSeed(['areas'])(context);const $=context.grid('areas').constructor,parserAjax=$.ajax;
+        lazySeed(requests)(context);const loadAjax=$.ajax;
+        $.ajax=options=>options.dataType==='script'?parserAjax(options):loadAjax(options);
+        context.grid('areas').children('#validateMaxRow').val('5');
+    }});t.after(()=>s.dom.window.close());s.expand(s.first);
+    requests[0].deferred.resolve({rows:[{id:'loaded',name:'Existing',parentId:'p1'}],total:4});
+    let host=await nestedImportFile(childSection(s,s.first,'areas'),'name\nToo Many A\nToo Many B');
+    assert.match(host.find('.formgrid-import-status').text(),/maximum of 5 rows \(4 existing/);
+    assert.equal(s.grid('areas').getValues().length,1);
+    host=await nestedImportFile(childSection(s,s.first,'areas'),'name\nAllowed Lazy');host.find('.formgrid-import-confirm').trigger('click');
+    assert.equal(s.grid('areas').getValues().length,2);
+    assert.equal(s.grid('areas').getValues()[1].parentId,'p1');
+    assert.equal(s.grid('areas').children('.formgrid-nested-loaded').val(),'["p1"]');
+    host=await nestedImportFile(childSection(s,s.first,'areas'),'name\nOver Limit');
+    assert.match(host.find('.formgrid-import-status').text(),/maximum of 5 rows \(5 existing/);
+});
+test('changing the parent key after preview blocks nested import instead of retargeting its rows',async t=>{
+    const s=setup(undefined,{seed:nestedImportSeed(['areas'])});t.after(()=>s.dom.window.close());s.expand(s.first);
+    const host=await nestedImportFile(childSection(s,s.first,'areas'),'name\nPending Row');
+    s.first.find('textarea').val(JSON.stringify({...s.data(s.first),id:'changed-parent'}));
+    host.find('.formgrid-import-confirm').trigger('click');
+    assert.match(host.find('.formgrid-import-status').text(),/parent row has changed/);
+    assert.equal(s.grid('areas').getValues().length,2);
 });
