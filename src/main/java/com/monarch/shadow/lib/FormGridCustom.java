@@ -46,7 +46,7 @@ import org.joget.plugin.base.PluginWebSupport;
 
 public class FormGridCustom extends Element implements FormBuilderPaletteElement, FormContainer, GridInnerDataRetriever, PwaOfflineResources, PwaOfflineReadonly, PluginWebSupport {
     private static final String MESSAGE_PATH = "messages/FormGridCustom";
-    private static final String VERSION = "2.16.0";
+    private static final String VERSION = "2.16.1";
 
     protected Map<FormData, FormRowSet> cachedRowSet = new HashMap<>();
     protected Map<String, FormData> formDatas = new HashMap<>();

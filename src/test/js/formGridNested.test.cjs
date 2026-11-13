@@ -746,6 +746,57 @@ function lazySeed(requests) {
         }
     };
 }
+test('slow child loading keeps feedback local and blocks saving until every request settles',t=>{
+    const requests=[],s=setup(undefined,{seed:lazySeed(requests)});t.after(()=>s.dom.window.close());
+    const root=s.grid('plants'),status=root.children('.formgrid-nested-status');
+    s.expand(s.first);s.expand(s.second);
+    assert.equal(requests.length,2);
+    assert.equal(status.prop('hidden'),true);
+    for(const row of [s.first,s.second]) {
+        const section=row.next().find('[data-child-grid="areas"]');
+        assert.equal(section.attr('aria-busy'),'true');
+        assert.match(section.find('[role="status"]').text(),/Loading child rows/);
+        assert.equal(section.find('.formgrid-nested-add').prop('disabled'),true);
+    }
+    root.data('formGridNested').refresh();
+    root.gridPagingCustom('showPage',1);
+    assert.equal(requests.length,2);
+    assert.equal(status.prop('hidden'),true);
+    let event=s.$.Event('submit');s.$('form').triggerHandler(event);
+    assert.equal(event.isDefaultPrevented(),true);
+    assert.match(status.text(),/Wait for child rows/);
+    requests[1].deferred.resolve({rows:[{id:'secondArea',name:'Second Area',parentId:'p2'}]});
+    assert.equal(status.prop('hidden'),true);
+    assert.equal(s.second.next().find('[data-child-grid="areas"]').attr('aria-busy'),undefined);
+    assert.equal(s.first.next().find('[data-child-grid="areas"]').attr('aria-busy'),'true');
+    event=s.$.Event('submit');s.$('form').triggerHandler(event);assert.equal(event.isDefaultPrevented(),true);
+    requests[0].deferred.resolve({rows:[{id:'firstArea',name:'First Area',parentId:'p1'}]});
+    assert.equal(status.prop('hidden'),true);
+    assert.equal(root.find('[aria-busy="true"]').length,0);
+    assert.match(s.first.next().text(),/First Area/);assert.match(s.second.next().text(),/Second Area/);
+    assert.equal(s.first.next().find('.formgrid-nested-add').prop('disabled'),false);
+    assert.deepEqual(JSON.parse(s.grid('areas').children('.formgrid-nested-loaded').val()).sort(),['p1','p2']);
+    event=s.$.Event('submit');s.$('form').triggerHandler(event);assert.equal(event.isDefaultPrevented(),false);
+    assert.equal(s.grid('areas').getValues().length,2);
+});
+test('retrying a failed slow request restores local loading without an automatic validation error',t=>{
+    const requests=[],s=setup(undefined,{seed:lazySeed(requests)});t.after(()=>s.dom.window.close());
+    const root=s.grid('plants');
+    s.expand(s.first);requests[0].deferred.reject({status:503});
+    let section=s.first.next().find('[data-child-grid="areas"]');
+    assert.equal(section.attr('aria-busy'),undefined);
+    assert.match(section.find('[role="alert"]').text(),/Unable to load child/);
+    section.find('.formgrid-nested-retry').trigger('click');
+    section=s.first.next().find('[data-child-grid="areas"]');
+    assert.equal(section.attr('aria-busy'),'true');
+    assert.equal(root.children('.formgrid-nested-status').prop('hidden'),true);
+    assert.equal(requests.length,2);
+    s.expand(s.first);s.expand(s.first);assert.equal(requests.length,2);
+    requests[1].deferred.resolve({rows:[]});
+    assert.match(s.first.next().text(),/No related records/);
+    assert.equal(root.find('[aria-busy="true"]').length,0);
+    assert.equal(root.children('.formgrid-nested-status').prop('hidden'),true);
+});
 test('child requests wait for expansion at each level and remain isolated per parent',t=>{
     const requests=[],s=setup(undefined,{seed:lazySeed(requests)});t.after(()=>s.dom.window.close());
     assert.equal(requests.length,0);s.expand(s.first);

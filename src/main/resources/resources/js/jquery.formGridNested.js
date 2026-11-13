@@ -130,10 +130,11 @@
             function hasChildren(id, row) {
                 return direct(id).some(function(node) { return matching(node, row).length > 0; });
             }
-            function validateData() {
+            function validateData(forSubmit) {
                 var problems = [];
                 nodes.forEach(function(node, id) {
-                    if (node.loads && Array.from(node.loads.values()).indexOf('loading') !== -1)
+                    // Loading is expected while expanding rows; only a save attempt needs this guard.
+                    if (forSubmit && node.loads && Array.from(node.loads.values()).indexOf('loading') !== -1)
                         problems.push('Wait for child rows to finish loading before saving.');
                     direct(id).forEach(function(child) {
                         var keys = new Set();
@@ -329,8 +330,9 @@
                     section.append(heading);
                     if (loadState(node, key) !== 'loaded') {
                         var failed = loadState(node, key) === 'error';
+                        if (!failed) section.attr('aria-busy', 'true');
                         heading.find('.formgrid-nested-add').prop('disabled', true);
-                        section.append($('<p role="status">').text(failed ?
+                        section.append($('<p class="formgrid-nested-load-status">').attr('role', failed ? 'alert' : 'status').text(failed ?
                             (node.loadExpired ? 'Child data session expired after a plugin update or timeout. Reload the form to continue.' : 'Unable to load child rows.') : 'Loading child rows…'));
                         if (failed) {
                             if (!node.loadExpired) section.append(button('Retry', 'formgrid-nested-retry', function() { loadChildren(node, key); refresh(); }));
@@ -541,7 +543,7 @@
             root.on('formgrid:sorted.formGridNested', refresh);
             root.closest('form').on('submit.formGridNested' + detailId, function(event) {
                 var message;
-                try { message = validateData(); } catch (problem) { message = problem.message; }
+                try { message = validateData(true); } catch (problem) { message = problem.message; }
                 if (message) { error(message); event.preventDefault(); }
             });
             refresh();

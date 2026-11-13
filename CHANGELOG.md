@@ -1,5 +1,11 @@
 # Changelog
 
+## [2.16.1] - 2026-11-13
+
+### Diperbaiki
+- Loading child rows tidak lagi memunculkan error validasi otomatis saat expand, refresh, atau retry pada koneksi lambat. Status loading ditampilkan pada subgrid terkait; kegagalan request tetap memiliki pesan error dan Retry.
+- Submit tetap ditolak selama masih ada request child yang berjalan, termasuk beberapa parent yang dimuat bersamaan. Status busy dan tombol Add mengikuti penyelesaian request masing-masing.
+
 ## [2.16.0] - 2026-11-13
 
 ### Ditambahkan
