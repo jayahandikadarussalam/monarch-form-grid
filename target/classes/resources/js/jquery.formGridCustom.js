@@ -766,7 +766,7 @@
                     if (row.hasClass("grid-row-template")) return false;
 
                     // 3. Cek apakah row ini sedang di-hide oleh filter logic? (Jangan diambil)
-                    if (row.hasClass("fg-hidden")) return false;
+                    if (row.is('.fg-hidden,.fg-search-hidden')) return false;
 
                     // Jika lolos semua filter, kembalikan true (elemen ini akan dicentang)
                     return true;
@@ -818,7 +818,7 @@
             //handle checkboxes of each row (children)
             $(container).off('change.grid-row', ".grid-row .grid-checkbox-children")
                 .on('change.grid-row', ".grid-row .grid-checkbox-children", function(){
-                    if ($(this).is(":disabled")) return; // abaikan child yg disable
+                    if ($(this).is(":disabled") || $(this).closest('tr').is('.fg-hidden,.fg-search-hidden')) return;
 
                     var td = $(this).closest("td")[0];
                     var arr = $(container).data("selected_rows");
@@ -837,8 +837,9 @@
                     }
 
                     // === update parent state otomatis ===
-                    var total = $(container).find(".grid-row .grid-checkbox-children:not(:disabled)").length;
-                    var checked = $(container).find(".grid-row .grid-checkbox-children:not(:disabled):checked").length;
+                    var selectable = $(container).find('.grid-row').not('.fg-hidden,.fg-search-hidden').find('.grid-checkbox-children:not(:disabled)');
+                    var total = selectable.length;
+                    var checked = selectable.filter(':checked').length;
 
                     if (checked === total && total > 0) {
                         $(container).find(".grid-checkbox-parent").prop('checked', true);

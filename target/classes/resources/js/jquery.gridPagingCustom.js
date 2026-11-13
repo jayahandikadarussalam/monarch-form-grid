@@ -1,4 +1,41 @@
 (function( $ ){
+    function normalize(value) {
+        return String(value == null ? '' : value).replace(/\s+/g, ' ').trim().toLowerCase();
+    }
+
+    function matches(row, query) {
+        query = normalize(query);
+        if (!query) return true;
+        var values = [];
+        var data = {};
+        try { data = JSON.parse(row.children('td').children('textarea:not(.formgrid-editor)').first().val() || '{}'); } catch (ignored) {}
+        row.children('td').each(function() {
+            var cell = $(this);
+            if (cell.css('display') === 'none') return;
+            cell.find('.grid-cell[column_key]').each(function() {
+                var field = $(this), display = field.clone();
+                display.find('input,select,textarea,script,style,.tablesaw-cell-label,.formgrid-editable-filenames').remove();
+                values.push(display.text());
+                field.find('.formgrid-editor').each(function() {
+                    var editor = $(this), column = editor.data('column') || {}, value = editor.val();
+                    // Nested editors write to canonical JSON without rebuilding the source controls.
+                    if (Object.prototype.hasOwnProperty.call(data, column.id)) value = data[column.id];
+                    if (data._decryptedDataMap && data._decryptedDataMap[column.id] !== undefined) value = data._decryptedDataMap[column.id];
+                    if (editor.is('select')) {
+                        var selected = String(value == null ? '' : value).split(';');
+                        editor.find('option').each(function() {
+                            if (selected.indexOf(this.value) !== -1) values.push($(this).text());
+                        });
+                    } else if (!editor.is(':checkbox,:radio') || editor.is(':checked')) values.push(value);
+                });
+            });
+        });
+        return normalize(values.join(' ')).indexOf(query) !== -1;
+    }
+
+    // Shared by canonical grids and the related-record views of nested grids.
+    $.formGridSearch = {matches: matches};
+
     var defaults = {
         size : 10,
         threshold : 10
@@ -19,8 +56,20 @@
 
                 methods.refresh.call(thisObj);
 
-                $(thisObj).change(function(){
+                thisObj.off('change.gridPagingCustom').on('change.gridPagingCustom', function(){
                     methods.refresh.call(thisObj);
+                });
+
+                var search = thisObj.children('.formgrid-search').find('.formgrid-search-input');
+                search.off('.gridPagingCustom').on('input.gridPagingCustom search.gridPagingCustom change.gridPagingCustom', function(event) {
+                    event.stopPropagation();
+                    thisObj.children('.pg-navigator').find('.pg-current').attr('rel', 1);
+                    methods.refresh.call(thisObj);
+                }).on('keydown.gridPagingCustom', function(event) {
+                    if (event.key === 'Enter') event.preventDefault();
+                });
+                thisObj.off('formgrid:rowupdated.gridPagingCustom').on('formgrid:rowupdated.gridPagingCustom', function() {
+                    if (search.length) methods.refresh.call(thisObj);
                 });
 
                 if (options.dataSorting) {
@@ -95,14 +144,36 @@
         refresh: function() {
             var thisObj = $(this);
 
+            methods.filter.call(thisObj);
+
             var currentPage = 1;
 
-            if ($(thisObj).find(".pg-navigator .pg-current").length > 0) {
-                currentPage = $(thisObj).find(".pg-navigator .pg-current").attr("rel");
+            if (thisObj.children('.pg-navigator').find('.pg-current').length > 0) {
+                currentPage = thisObj.children('.pg-navigator').find('.pg-current').attr('rel');
             }
 
             methods.navigator.call(thisObj);
             methods.showPage.call(thisObj, currentPage);
+        },
+
+        filter: function() {
+            var grid = $(this), toolbar = grid.children('.formgrid-search');
+            if (!toolbar.length) return;
+            var query = normalize(toolbar.find('.formgrid-search-input').val());
+            var rows = grid.children('table').children('tbody').children('tr.grid-row');
+            rows.each(function() {
+                var row = $(this), hidden = !matches(row, query);
+                row.toggleClass('fg-search-hidden', hidden);
+                if (hidden) row.find('.grid-checkbox-children').prop('checked', false);
+            });
+            var available = rows.not('.fg-hidden,.fg-search-hidden');
+            toolbar.find('.formgrid-search-empty').prop('hidden', !query || available.length > 0);
+            if (grid.data('selected_rows') !== undefined) {
+                var boxes = available.find('.grid-checkbox-children:not(:disabled)'), checked = boxes.filter(':checked');
+                grid.data('selected_rows', checked.map(function() { return $(this).closest('td')[0]; }).get());
+                grid.children('.delete_btn').toggle(checked.length > 0);
+                grid.children('table').find('.grid-checkbox-parent').prop('checked', boxes.length > 0 && checked.length === boxes.length);
+            }
         },
 
         navigator: function() {
@@ -110,10 +181,10 @@
 
             var table = $(thisObj).children("table");
             var options = $(table).data("pagingOptions");
-            var size = $(table).find("tr.grid-row").not(".fg-hidden").length;
+            var size = table.children('tbody').children('tr.grid-row').not('.fg-hidden,.fg-search-hidden').length;
 
-            if ($(thisObj).find(".pg-navigator").length > 0) {
-                $(thisObj).find(".pg-navigator").remove();
+            if (thisObj.children('.pg-navigator').length > 0) {
+                thisObj.children('.pg-navigator').remove();
             }
 
             if (size <= options.threshold) return;
@@ -139,7 +210,9 @@
 
             var table = $(thisObj).children("table");
             var options = table.data("pagingOptions");
-            var candidateRows = table.find("tr.grid-row").not(".fg-hidden");
+            var allRows = table.children('tbody').children('tr.grid-row');
+            allRows.filter('.fg-hidden,.fg-search-hidden').removeClass('pg-tr-show').addClass('pg-tr-hide').hide();
+            var candidateRows = allRows.not('.fg-hidden,.fg-search-hidden');
             var pageSize = candidateRows.length <= options.threshold ? Math.max(options.threshold, 1) : options.size;
             var pages = Math.max(1, Math.ceil(candidateRows.length / pageSize));
             page = Math.max(1, Math.min(Number(page) || 1, pages));

@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.16.0] - 2026-11-13
+
+### Ditambahkan
+- Checkbox Enable Search pada UI > Grid untuk menampilkan pencarian pada kolom yang ditampilkan, tanpa membedakan huruf besar/kecil dan mencakup seluruh halaman.
+- Pencarian pada nested subgrid mengikuti pengaturan child grid dan tersimpan terpisah untuk setiap parent. Mode readonly tetap mendukung pencarian.
+- Pagination mengikuti hasil pencarian; baris yang tidak cocok dikeluarkan dari pilihan hapus massal tanpa mengubah JSON yang disimpan.
+
 ## [2.15.2] - 2026-11-09
 
 ### Diubah

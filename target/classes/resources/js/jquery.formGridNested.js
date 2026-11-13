@@ -359,7 +359,21 @@
                     header.append('<th class="formgrid-nested-actions-header" aria-label="Actions"></th>');
                     table.append($('<thead>').append(header), body);
                     var matched = (lookup ? lookup(node, key) : matching(node, parentRow)).not('.fg-hidden');
+                    var candidates = matched;
                     var state = pageState(node, parentRow);
+                    var search = node.grid.children('.formgrid-search').clone();
+                    if (search.length && $.formGridSearch) {
+                        search.find('.formgrid-search-input').val(state.query || '')
+                            .on('input.formGridNested search.formGridNested change.formGridNested', function(event) {
+                                event.stopPropagation();
+                                state.query = $(this).val();
+                                state.page = 1;
+                                renderPage();
+                            }).on('keydown.formGridNested', function(event) {
+                                if (event.key === 'Enter') event.preventDefault();
+                            });
+                        section.append(search);
+                    }
                     var pager = $('<div class="formgrid-nested-pagination" role="group">').attr('aria-label', (node.label || node.gridId) + ' pagination');
                     var sizeSelect = $('<select class="formgrid-nested-page-size" aria-label="Rows per page">');
                     [10, 20, 50, 100].concat([state.size]).filter(function(value, index, sizes) {
@@ -385,6 +399,11 @@
                     pager.append($('<label class="formgrid-nested-page-size-label">').append($('<span>').text('Rows per page'), sizeSelect), info, compactInfo,
                         $('<div class="formgrid-nested-page-actions">').append(first, previous, next, last));
                     function renderPage() {
+                        if (search.length && $.formGridSearch) {
+                            matched = candidates.filter(function() { return $.formGridSearch.matches($(this), state.query); });
+                            // The table already supplies an empty-state row for related records.
+                            search.find('.formgrid-search-empty').prop('hidden', true);
+                        }
                         var pageSize = matched.length <= paginationThreshold ? Math.max(paginationThreshold, matched.length, 1) : state.size;
                         var pages = Math.max(1, Math.ceil(matched.length / pageSize));
                         state.page = Math.max(1, Math.min(state.page, pages));
@@ -412,7 +431,8 @@
                             }
                         });
                         if (!matched.length) body.append($('<tr>').append($('<td class="formgrid-nested-empty">')
-                            .attr('colspan', header.children().length).text('No related records.')));
+                            .attr('colspan', header.children().length).text(state.query && search.length ?
+                                search.find('.formgrid-search-empty').text() : 'No related records.')));
                         info.text('Showing ' + (matched.length ? start + 1 : 0) + '–' + end + ' of ' + matched.length + ' rows. Page ' + state.page + ' of ' + pages + '.');
                         compactInfo.text((matched.length ? start + 1 : 0) + '–' + end + ' / ' + matched.length);
                         first.add(previous).prop('disabled', state.page === 1);

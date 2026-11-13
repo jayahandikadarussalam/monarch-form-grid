@@ -275,6 +275,14 @@
         "type" : "header"
       },
       {
+        "name": "enableSearch",
+        "label": "@@form.formgrid.enableSearch@@",
+        "description": "@@form.formgrid.enableSearch.desc@@",
+        "type": "checkbox",
+        "value": "false",
+        "options": [{"value": "true", "label": ""}]
+      },
+      {
         "name": "editable",
         "label": "@@form.formgrid.editable@@",
         "description": "@@form.formgrid.editable.desc@@",

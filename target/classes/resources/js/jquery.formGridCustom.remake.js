@@ -15,7 +15,7 @@
                     if ($(this).prop('disabled') === true) return false;
 
                     // Cek juga parent row-nya, jangan hitung jika row disembunyikan filter
-                    if ($(this).closest('tr').hasClass('fg-hidden')) return false;
+                    if ($(this).closest('tr').is('.fg-hidden,.fg-search-hidden')) return false;
 
                     return true;
                 });
@@ -41,7 +41,7 @@
         $(this).find('.grid-checkbox-children:checked:not(:disabled)').each(function() {
             const row = $(this).closest('tr.grid-row');
 
-            if (row.hasClass('fg-hidden')) {
+            if (row.is('.fg-hidden,.fg-search-hidden')) {
                 return; // Skip jika row disembunyikan oleh logic filter
             }
 

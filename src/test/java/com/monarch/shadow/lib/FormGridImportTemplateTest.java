@@ -43,6 +43,11 @@ public class FormGridImportTemplateTest {
 
     private String render(boolean enabled, boolean readonly, String previewPageSize, boolean editable, boolean nested,
                           boolean nestedSource, String sorting, String rowNumbers, boolean builderDesign) throws Exception {
+        return render(enabled, readonly, previewPageSize, editable, nested, nestedSource, sorting, rowNumbers, builderDesign, null);
+    }
+
+    private String render(boolean enabled, boolean readonly, String previewPageSize, boolean editable, boolean nested,
+                          boolean nestedSource, String sorting, String rowNumbers, boolean builderDesign, String enableSearch) throws Exception {
         Configuration config = new Configuration();
         config.setTemplateExceptionHandler(TemplateExceptionHandler.RETHROW_HANDLER);
         Template template = new Template("FormGridCustom.ftl", new InputStreamReader(
@@ -55,6 +60,7 @@ public class FormGridImportTemplateTest {
         props.put("enableSorting", sorting);
         props.put("showRowNumber", rowNumbers);
         props.put("sortField", "sort");
+        if (enableSearch != null) props.put("enableSearch", enableSearch);
         if (previewPageSize != null) props.put("importPreviewPageSize", previewPageSize);
         Map<String, Object> model = new HashMap<>();
         model.put("element", Collections.singletonMap("properties", props));
@@ -80,6 +86,21 @@ public class FormGridImportTemplateTest {
         StringWriter out = new StringWriter();
         template.process(model, out);
         return out.toString();
+    }
+
+    @Test
+    public void searchIsOptInAndAvailableInReadonlyAndBuilderModes() throws Exception {
+        assertFalse(render(false, false).contains("class=\"formgrid-search\""));
+        assertFalse(render(false, false, null, false, false, false, "", "", false, "false").contains("class=\"formgrid-search\""));
+        for (boolean readonly : new boolean[]{false, true}) {
+            for (boolean builder : new boolean[]{false, true}) {
+                String html = render(false, readonly, null, false, false, false, "", "", builder, "true");
+                assertTrue(html.contains("class=\"formgrid-search\""));
+                assertTrue(html.contains("type=\"search\" class=\"formgrid-search-input\""));
+                assertTrue(html.contains("role=\"status\" aria-live=\"polite\" hidden>No matching records."));
+                assertFalse(html.contains("name=\"formgrid-search"));
+            }
+        }
     }
 
     @Test

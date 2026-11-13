@@ -150,6 +150,12 @@ $('#employeeGrid').hideRowsByCondition(function(data) {
         4. Nomor halaman (*paging*) ditata ulang menyesuaikan jumlah baris IT yang tersisa.
 
 
+## Search Form Grid
+
+Aktifkan checkbox **Enable Search** di properties **UI > Grid** untuk menampilkan kotak pencarian. Secara default fitur ini nonaktif. Pencarian berjalan langsung saat mengetik, tanpa membedakan huruf besar/kecil, pada nilai kolom yang ditampilkan di seluruh halaman. Kosongkan pencarian untuk menampilkan kembali baris yang sesuai filter lainnya.
+
+Pagination mengikuti hasil pencarian. Baris yang tidak cocok tidak ikut pemilihan atau hapus massal; semua data tetap dikirim ketika form disimpan. Pencarian juga tersedia pada mode readonly. Untuk nested subgrid, aktifkan Enable Search di child grid; pencarian berlaku pada record terkait dan terpisah untuk setiap parent. Data nested dimuat saat parent dibuka.
+
 ## Nested Subgrids
 
 Version 2.12.0 supports dynamic nested parent/child grids. See [Nested Grid setup and foreign keys](docs/NESTED_GRID.md) for the Plant → Area → Equipment Group → Equipment Type → Tags → Parameter example and binder configuration.

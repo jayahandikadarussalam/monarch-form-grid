@@ -46,7 +46,7 @@ import org.joget.plugin.base.PluginWebSupport;
 
 public class FormGridCustom extends Element implements FormBuilderPaletteElement, FormContainer, GridInnerDataRetriever, PwaOfflineResources, PwaOfflineReadonly, PluginWebSupport {
     private static final String MESSAGE_PATH = "messages/FormGridCustom";
-    private static final String VERSION = "2.15.2";
+    private static final String VERSION = "2.16.0";
 
     protected Map<FormData, FormRowSet> cachedRowSet = new HashMap<>();
     protected Map<String, FormData> formDatas = new HashMap<>();
@@ -104,6 +104,9 @@ public class FormGridCustom extends Element implements FormBuilderPaletteElement
         dataModel.put("addLabelMessage", getAddLabelMessage());
         dataModel.put("deleteSelectedRowsLabel", AppPluginUtil.getMessage("form.formgrid.deleteSelectedRows", getClassName(), MESSAGE_PATH));
         dataModel.put("duplicateRowLabel", AppPluginUtil.getMessage("form.formgrid.duplicateRow", getClassName(), MESSAGE_PATH));
+        dataModel.put("searchLabel", AppPluginUtil.getMessage("form.formgrid.search", getClassName(), MESSAGE_PATH));
+        dataModel.put("searchPlaceholder", AppPluginUtil.getMessage("form.formgrid.search.placeholder", getClassName(), MESSAGE_PATH));
+        dataModel.put("searchEmptyLabel", AppPluginUtil.getMessage("form.formgrid.search.empty", getClassName(), MESSAGE_PATH));
 
         String json = getSelectedFormJson();
         dataModel.put("json", json);

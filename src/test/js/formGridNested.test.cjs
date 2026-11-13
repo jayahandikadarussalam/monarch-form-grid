@@ -41,6 +41,59 @@ function setup(relations = [{gridId:'areas',foreignKey:'parentId'},{gridId:'type
     const data=row=>JSON.parse(row.find('textarea:not(.formgrid-editor)').first().val());
     return {dom,window,$,grid,add,first,second,area,popups,expand,data};
 }
+test('nested search follows each child checkbox, spans pages and stays local to its parent', t=>{
+    const s=setup(undefined,{count:1,paginationThreshold:0,seed({grid,add}){
+        grid('areas').prepend('<div class="formgrid-search"><label>Search<input type="search" class="formgrid-search-input"></label><span class="formgrid-search-empty" hidden>No matching records.</span></div>');
+        add('areas',{id:'a3',name:'Target Area',parentId:'p1'});
+    }});t.after(()=>s.dom.window.close());
+    s.expand(s.first);
+    let detail=s.first.next(), input=detail.find('.formgrid-search-input').first();
+    assert.equal(input.length,1);
+    input.val('TARGET').trigger('input');
+    assert.match(detail.find('.formgrid-nested-row').text(),/Target Area/);
+    assert.doesNotMatch(detail.find('.formgrid-nested-row').text(),/Area One/);
+    detail.find('.formgrid-nested-toggle').first().trigger('click');
+    assert.equal(detail.find('.formgrid-search-input').length,1);
+    s.expand(s.first);s.expand(s.first);
+    detail=s.first.next();
+    assert.equal(detail.find('.formgrid-search-input').val(),'TARGET');
+    detail.find('.formgrid-search-input').val('absent').trigger('input');
+    assert.match(detail.text(),/No matching records/);
+    assert.equal(s.grid('areas').getValues().length,3);
+    detail.find('.formgrid-search-input').val('').trigger('search');
+    assert.match(detail.find('.formgrid-nested-row').text(),/Area One/);
+    s.grid('plants').find('.pg-next').trigger('click');s.expand(s.second);
+    assert.equal(s.second.next().find('.formgrid-search-input').val(),'');
+    assert.match(s.second.next().find('.formgrid-nested-row').text(),/Area Two/);
+});
+test('root search hides expanded details with their parent and restores expansion when cleared', t=>{
+    const s=setup(undefined,{count:2,seed({grid}){
+        grid('plants').prepend('<div class="formgrid-search"><input type="search" class="formgrid-search-input"><span class="formgrid-search-empty" hidden>No matching records.</span></div>');
+    }});t.after(()=>s.dom.window.close());
+    s.expand(s.first);
+    const detail=s.first.next(), input=s.grid('plants').children('.formgrid-search').find('input');
+    assert.match(detail.text(),/Area One/);
+    input.val('Plant Two').trigger('input');
+    assert.equal(detail.css('display'),'none');
+    assert.equal(detail.children('td').text(),'');
+    input.val('').trigger('input');
+    assert.notEqual(detail.css('display'),'none');
+    assert.match(detail.text(),/Area One/);
+});
+test('nested search reads inline edits from canonical JSON while source controls retain their old values', t=>{
+    const s=setup(undefined,{seed({grid}){
+        grid('areas').prepend('<div class="formgrid-search"><label>Search<input type="search" class="formgrid-search-input"></label><span class="formgrid-search-empty" hidden>No matching records.</span></div>');
+        inlineFields(grid('areas'),[{id:'name',editor:'TextField'}]);
+    }});t.after(()=>s.dom.window.close());
+    s.expand(s.first);
+    const detail=s.first.next();
+    detail.find('.formgrid-editor').first().val('New name').trigger('input');
+    detail.find('.formgrid-search-input').val('new name').trigger('input');
+    assert.equal(detail.find('.formgrid-nested-row').length,1);
+    assert.equal(detail.find('.formgrid-editor').val(),'New name');
+    detail.find('.formgrid-search-input').val('Area One').trigger('input');
+    assert.equal(detail.find('.formgrid-nested-row').length,0);
+});
 test('nested headings and pager names follow source grid Labels instead of legacy relation labels at every level', t=>{
     const s=setup([{gridId:'areas',foreignKey:'parentId',label:'Old Area'},
         {gridId:'types',parentGridId:'areas',foreignKey:'parentId',label:'Old Type'}],{seed({grid}){
