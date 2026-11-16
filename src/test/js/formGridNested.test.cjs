@@ -41,6 +41,180 @@ function setup(relations = [{gridId:'areas',foreignKey:'parentId'},{gridId:'type
     const data=row=>JSON.parse(row.find('textarea:not(.formgrid-editor)').first().val());
     return {dom,window,$,grid,add,first,second,area,popups,expand,data};
 }
+function checkboxes(grid) {
+    const table=grid.children('table');
+    table.find('thead > tr').prepend('<th><input type="checkbox" class="grid-checkbox-parent" aria-label="Select All Rows"></th>');
+    table.find('tr.grid-row-template,tr.grid-row').prepend('<td><input type="checkbox" class="grid-checkbox-children" aria-label="Select Row"></td>');
+    grid.prepend('<button type="button" class="formgrid-custom-delete delete_btn" aria-label="Delete Selected Rows" style="display:none">Delete</button>');
+    grid.formGridCustom('bindDeleteEvents');
+}
+function nestedSection(s, row=s.first, id='areas') {
+    return row.next().find('[data-child-grid="'+id+'"]').first();
+}
+function rowChoices(section) {
+    return section.children('.formgrid-nested-scroll').children('table').children('tbody')
+        .children('.formgrid-nested-row').find('.formgrid-nested-select-row');
+}
+test('nested select all spans child pages, stays local to a parent and never selects root rows',t=>{
+    const s=setup([{gridId:'areas',foreignKey:'parentId'}],{seed({grid,add}){
+        add('areas',{id:'a3',name:'Area Three',parentId:'p1'});
+        for (const id of ['plants','areas']) checkboxes(grid(id));
+        grid('areas').children('table').data('pagingOptions',{size:1});
+    }});t.after(()=>s.dom.window.close());
+    s.expand(s.first);s.expand(s.second);
+    let section=nestedSection(s);
+    assert.equal(rowChoices(section).length,1);
+    assert.equal(section.find('.formgrid-nested-delete-selected').prop('hidden'),true);
+    section.find('.formgrid-nested-select-all').prop('checked',true).trigger('change');
+    assert.equal(rowChoices(section).prop('checked'),true);
+    assert.equal(s.grid('plants').data('selected_rows').length,0);
+    assert.equal(s.grid('plants').children('table').find('.grid-checkbox-children:checked').length,0);
+    assert.equal(nestedSection(s,s.second).find('.formgrid-nested-select-all').prop('checked'),false);
+    section.find('.formgrid-nested-page-next').trigger('click');
+    assert.equal(rowChoices(section).prop('checked'),true);
+    rowChoices(section).prop('checked',false).trigger('change');
+    assert.equal(section.find('.formgrid-nested-select-all').prop('indeterminate'),true);
+    s.expand(s.first);s.expand(s.first);
+    section=nestedSection(s);
+    assert.equal(section.find('.formgrid-nested-select-all').prop('indeterminate'),true);
+    section.find('.formgrid-nested-page-prev').trigger('click');
+    assert.equal(rowChoices(section).prop('checked'),true);
+    section.find('.formgrid-nested-select-all').prop('checked',false).trigger('change');
+    assert.equal(section.find('.formgrid-nested-delete-selected').prop('hidden'),true);
+});
+test('nested bulk delete confirms once, supports cancellation and only deletes this parents filtered selections',t=>{
+    const s=setup([{gridId:'areas',foreignKey:'parentId'}],{seed({grid,add}){
+        add('areas',{id:'a3',name:'Keep Area',parentId:'p1'});
+        add('areas',{id:'a4',name:'Area Four',parentId:'p1'});
+        checkboxes(grid('areas'));
+        grid('areas').data('formGridMessages',{'form.formgrid.bulkDeleteMessage':'Hapus pilihan?'});
+        grid('areas').prepend('<div class="formgrid-search"><input class="formgrid-search-input"><span class="formgrid-search-empty" hidden>No matching records.</span></div>');
+        grid('areas').children('table').data('pagingOptions',{size:1});
+    }});t.after(()=>s.dom.window.close());
+    s.expand(s.first);s.expand(s.second);
+    let section=nestedSection(s), confirmations=[];
+    section.find('.formgrid-nested-select-all').prop('checked',true).trigger('change');
+    section.find('.formgrid-search-input').val('Keep').trigger('input');
+    assert.equal(section.find('.formgrid-nested-select-all').prop('checked'),true);
+    section.find('.formgrid-search-input').val('').trigger('input');
+    assert.equal(section.find('.formgrid-nested-select-all').prop('indeterminate'),true);
+    s.window.confirm=message=>{confirmations.push(message);return false;};
+    section.find('.formgrid-nested-delete-selected').trigger('click');
+    assert.equal(s.grid('areas').getValues().length,4);
+    assert.equal(section.find('.formgrid-nested-delete-selected').prop('hidden'),false);
+    // Selecting all again includes the off-page siblings, but never another parent's rows.
+    section.find('.formgrid-nested-select-all').prop('checked',true).trigger('change');
+    s.window.confirm=message=>{confirmations.push(message);return true;};
+    section.find('.formgrid-nested-delete-selected').trigger('click');
+    assert.deepEqual(confirmations,['Hapus pilihan?','Hapus pilihan?']);
+    assert.equal(s.grid('areas').getValues().length,1);
+    assert.equal(s.data(s.grid('areas').children('table').find('tr.grid-row')).parentId,'p2');
+    assert.equal(s.grid('plants').getValues().length,2);
+    assert.equal(s.$('form').serializeArray().filter(pair=>pair.name.startsWith('areas_jsonrow_')).length,1);
+    section=nestedSection(s);
+    assert.equal(section.find('.formgrid-nested-select-all').prop('disabled'),true);
+    assert.equal(section.find('.formgrid-nested-delete-selected').prop('hidden'),true);
+    assert.match(nestedSection(s,s.second).text(),/Area Two/);
+});
+test('nested selection excludes disabled and filtered source rows',t=>{
+    const s=setup([{gridId:'areas',foreignKey:'parentId'}],{seed({grid,add}){
+        const disabled=add('areas',{id:'a3',name:'Disabled',parentId:'p1'});
+        const hidden=add('areas',{id:'a4',name:'Hidden',parentId:'p1'});
+        checkboxes(grid('areas'));
+        disabled.find('.grid-checkbox-children').prop('disabled',true);
+        hidden.addClass('fg-hidden');
+        grid('areas').children('table').data('pagingOptions',{size:10});
+    }});t.after(()=>s.dom.window.close());s.expand(s.first);
+    const section=nestedSection(s);
+    assert.equal(rowChoices(section).length,2);
+    assert.equal(rowChoices(section).filter(':disabled').length,1);
+    section.find('.formgrid-nested-select-all').prop('checked',true).trigger('change');
+    assert.equal(rowChoices(section).filter(':checked').length,1);
+    section.find('.formgrid-nested-delete-selected').trigger('click');
+    assert.equal(s.grid('areas').getValues().length,3);
+});
+test('nested checkbox visibility follows source properties and root or child readonly permissions',t=>{
+    for (const mode of ['enabled','checkboxDisabled','deleteDisabled','rootReadonly','childReadonly']) {
+        const s=setup(undefined,{readonly:mode==='rootReadonly',seed({grid}){
+            if (mode!=='checkboxDisabled') checkboxes(grid('areas'));
+            if (mode==='deleteDisabled') grid('areas').addClass('disabledDelete');
+            if (mode==='childReadonly') grid('areas').addClass('readonly');
+        }});t.after(()=>s.dom.window.close());s.expand(s.first);
+        const section=nestedSection(s), expected=mode==='enabled'?1:0;
+        assert.equal(section.find('.formgrid-nested-select-all').length,expected,mode);
+        assert.equal(section.find('.formgrid-nested-delete-selected').length,expected,mode);
+        assert.equal(rowChoices(section).length,expected,mode);
+    }
+});
+test('nested bulk delete preflights all rows and preserves parent restrictions at every level',t=>{
+    const s=setup(undefined,{seed({grid,add}){
+        add('areas',{id:'a3',name:'Leaf first',parentId:'p1'}).prependTo(grid('areas').children('table').children('tbody'));
+        checkboxes(grid('areas'));checkboxes(grid('types'));
+    }});t.after(()=>s.dom.window.close());s.expand(s.first);
+    let section=nestedSection(s), confirmations=0;
+    s.window.confirm=()=>{confirmations++;return true;};
+    section.find('.formgrid-nested-select-all').prop('checked',true).trigger('change');
+    section.find('.formgrid-nested-delete-selected').trigger('click');
+    assert.equal(s.grid('areas').getValues().length,3);
+    assert.equal(confirmations,0);
+    assert.match(s.grid('plants').children('.formgrid-nested-status').text(),/Delete related child/);
+    // Expand the second Area: the first is a leaf; Type selection is independent of Area selection.
+    section.find('.formgrid-nested-toggle').eq(1).trigger('click');
+    let types=nestedSection(s,s.first,'types');
+    types.find('.formgrid-nested-select-all').prop('checked',true).trigger('change');
+    types.find('.formgrid-nested-delete-selected').trigger('click');
+    assert.equal(s.grid('types').getValues().length,0);
+    section=nestedSection(s);
+    assert.equal(section.children('.formgrid-nested-scroll').find('thead .formgrid-nested-select-all').first().prop('checked'),true);
+    section.children('.formgrid-nested-heading').find('.formgrid-nested-delete-selected').trigger('click');
+    assert.equal(s.grid('areas').getValues().length,1);
+    assert.equal(confirmations,2);
+});
+test('lazy nested rows receive checkboxes and bulk delete requires checking unloaded descendants',t=>{
+    const requests=[],lazy=lazySeed(requests);
+    const s=setup(undefined,{seed(context){
+        lazy(context);checkboxes(context.grid('areas'));checkboxes(context.grid('types'));
+    }});t.after(()=>s.dom.window.close());s.expand(s.first);
+    assert.equal(nestedSection(s).find('.formgrid-nested-select-all').length,0);
+    requests[0].deferred.resolve({rows:[{id:'a1',name:'Lazy Area',parentId:'p1'}]});
+    let section=nestedSection(s), confirmations=0;
+    s.window.confirm=()=>{confirmations++;return true;};
+    assert.equal(rowChoices(section).length,1);
+    section.find('.formgrid-nested-select-all').prop('checked',true).trigger('change');
+    section.find('.formgrid-nested-delete-selected').trigger('click');
+    assert.equal(s.grid('areas').getValues().length,1);
+    assert.equal(confirmations,0);
+    assert.match(s.grid('plants').children('.formgrid-nested-status').text(),/Expand this row/);
+    section.find('.formgrid-nested-toggle').trigger('click');
+    requests[1].deferred.resolve({rows:[]});
+    section=nestedSection(s);
+    assert.equal(rowChoices(section).prop('checked'),true);
+    assert.equal(nestedSection(s,s.first,'types').find('.formgrid-nested-select-all').prop('disabled'),true);
+    section.children('.formgrid-nested-heading').find('.formgrid-nested-delete-selected').trigger('click');
+    assert.equal(s.grid('areas').getValues().length,0);
+    assert.equal(confirmations,1);
+});
+test('nested selections survive root paging and refresh after sorting without selecting duplicates',t=>{
+    const s=setup([{gridId:'areas',foreignKey:'parentId',sortWithButtons:'true',sortField:'sort'}],{count:1,seed({grid,add}){
+        add('areas',{id:'a3',name:'Second Area',parentId:'p1'});
+        checkboxes(grid('areas'));grid('areas').children('table').data('pagingOptions',{size:10});
+    }});t.after(()=>s.dom.window.close());s.expand(s.first);
+    rowChoices(nestedSection(s)).first().prop('checked',true).trigger('change');
+    s.grid('plants').gridPagingCustom('showPage',2);s.expand(s.second);
+    assert.equal(rowChoices(nestedSection(s,s.second)).prop('checked'),false);
+    s.grid('plants').gridPagingCustom('showPage',1);
+    assert.equal(rowChoices(nestedSection(s)).first().prop('checked'),true);
+    nestedSection(s).find('.formgrid-nested-movedown').first().trigger('click');
+    assert.equal(rowChoices(nestedSection(s)).last().prop('checked'),true);
+    nestedSection(s).find('.formgrid-nested-duplicate').last().trigger('click');
+    assert.equal(rowChoices(nestedSection(s)).length,3);
+    assert.equal(rowChoices(nestedSection(s)).filter(':checked').length,1);
+    nestedSection(s).find('.formgrid-nested-delete-selected').trigger('click');
+    assert.equal(s.grid('areas').getValues().length,3);
+    assert.equal(rowChoices(nestedSection(s)).filter(':checked').length,0);
+    assert.deepEqual(s.grid('areas').children('table').find('tr.grid-row textarea').map(function(){return this.name;}).get(),
+        ['areas_jsonrow_0','areas_jsonrow_1','areas_jsonrow_2']);
+});
 test('nested search follows each child checkbox, spans pages and stays local to its parent', t=>{
     const s=setup(undefined,{count:1,paginationThreshold:0,seed({grid,add}){
         grid('areas').prepend('<div class="formgrid-search"><label>Search<input type="search" class="formgrid-search-input"></label><span class="formgrid-search-empty" hidden>No matching records.</span></div>');

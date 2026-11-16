@@ -183,7 +183,8 @@
 
 /* Match the Monarch repeater's icon buttons without affecting other Joget grids. */
 .grid.formgrid-custom .grid-row-actions .grid-row-action,
-.grid.formgrid-custom > .formgrid-custom-delete {
+.grid.formgrid-custom > .formgrid-custom-delete,
+.grid.formgrid-custom .formgrid-nested-delete-selected {
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -208,7 +209,9 @@
 }
 
 .grid.formgrid-custom .grid-row-actions .grid-row-action::before,
-.grid.formgrid-custom .grid-row-actions .grid-row-action::after {
+.grid.formgrid-custom .grid-row-actions .grid-row-action::after,
+.grid.formgrid-custom .formgrid-nested-delete-selected::before,
+.grid.formgrid-custom .formgrid-nested-delete-selected::after {
     content: none !important;
 }
 
@@ -218,13 +221,19 @@
 }
 
 .grid.formgrid-custom .grid-row-action.grid-action-delete,
-.grid.formgrid-custom > .formgrid-custom-delete {
+.grid.formgrid-custom > .formgrid-custom-delete,
+.grid.formgrid-custom .formgrid-nested-delete-selected {
     color: #dc2626 !important;
 }
 
 .grid.formgrid-custom .grid-row-action.grid-action-delete:hover,
-.grid.formgrid-custom > .formgrid-custom-delete:hover {
+.grid.formgrid-custom > .formgrid-custom-delete:hover,
+.grid.formgrid-custom .formgrid-nested-delete-selected:hover:not(:disabled) {
     background: #fee2e2 !important;
+}
+
+.grid.formgrid-custom .formgrid-nested-delete-selected:hover:not(:disabled) {
+    color: #dc2626 !important;
 }
 
 .grid.formgrid-custom .grid-row-action.grid-action-duplicate:hover {
@@ -238,7 +247,8 @@
 }
 
 .grid.formgrid-custom .grid-row-action:focus-visible,
-.grid.formgrid-custom > .formgrid-custom-delete:focus-visible {
+.grid.formgrid-custom > .formgrid-custom-delete:focus-visible,
+.grid.formgrid-custom .formgrid-nested-delete-selected:focus-visible {
     outline: 2px solid #6366f1;
     outline-offset: 2px;
 }
@@ -284,6 +294,8 @@
 .formgrid-nested-section:last-child { margin-bottom: 0; }
 .formgrid-nested-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 8px; }
 .formgrid-nested-heading-actions { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 8px; }
+.formgrid-custom .formgrid-nested-delete-selected[hidden] { display: none !important; }
+.formgrid-custom .formgrid-nested-checkbox-cell { width: 1%; white-space: nowrap; text-align: center; vertical-align: middle; }
 .grid.formgrid-custom .formgrid-nested-import > .formgrid-import-panel { margin: 4px 0 12px; }
 .grid.formgrid-custom.formgrid-nested .formgrid-nested-import .formgrid-import-preview-table th,
 .grid.formgrid-custom.formgrid-nested .formgrid-nested-import .formgrid-import-preview-table td { background: #fff !important; box-shadow: none !important; }

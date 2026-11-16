@@ -25,6 +25,7 @@
             var importers = new WeakMap();
             var paginationThreshold = settings.paginationThreshold === undefined ? 10 : settings.paginationThreshold;
             var bulkExpanded = false;
+            var deletingSelection = false;
             var status = $('<div class="formgrid-nested-status form-error-message" role="alert" hidden>').prependTo(root);
             function error(message) { status.text(message).prop('hidden', !message); }
             function direct(id) { return children.get(id) || []; }
@@ -172,7 +173,7 @@
                 if (!states.has(node.gridId)) {
                     var options = node.grid.children('table').data('pagingOptions') || {};
                     var size = Number(options.size);
-                    states.set(node.gridId, {page: 1, size: isFinite(size) && size >= 1 ? Math.floor(size) : 20});
+                    states.set(node.gridId, {page: 1, size: isFinite(size) && size >= 1 ? Math.floor(size) : 20, selected: new Set()});
                 }
                 return states.get(node.gridId);
             }
@@ -347,6 +348,12 @@
                     }
                     var table = $('<table class="formgrid-nested-table" cellspacing="0">'), header = $('<tr>'), body = $('<tbody>');
                     var fields = [], template = node.grid.children('table').find('tr.grid-row-template').first();
+                    // The source header reflects Disable Checkbox, Disable Delete and write permission.
+                    var sourceSelectAll = node.grid.children('table').find('thead > tr .grid-checkbox-parent').first();
+                    var showCheckbox = canWrite(node.grid) && !node.grid.hasClass('disabledDelete') && sourceSelectAll.length > 0;
+                    var selectAll = $('<input type="checkbox" class="formgrid-nested-select-all">')
+                        .attr('aria-label', sourceSelectAll.attr('aria-label') || 'Select All Rows');
+                    if (showCheckbox) header.append($('<th class="formgrid-nested-checkbox-cell">').append(selectAll));
                     var showNumber = canSort(node) || template.find('span.grid-cell.rowNumber').length > 0;
                     if (showNumber) header.append('<th class="formgrid-nested-row-number">No.</th>');
                     template.children('td').each(function(index) {
@@ -363,6 +370,43 @@
                     var matched = (lookup ? lookup(node, key) : matching(node, parentRow)).not('.fg-hidden');
                     var candidates = matched;
                     var state = pageState(node, parentRow);
+                    var selectable = $();
+                    var sourceDelete = node.grid.children('.formgrid-custom-delete');
+                    var deleteLabel = sourceDelete.attr('aria-label') || 'Delete Selected Rows';
+                    var deleteSelected = $.formGridCustom.createAction('formgrid-nested-delete-selected', 'fa-trash', deleteLabel, function() {
+                        if (!canWrite(node.grid) || node.grid.hasClass('disabledDelete') || !showCheckbox) return;
+                        var selected = selectable.filter(function() { return state.selected.has(this); });
+                        if (!selected.length) return;
+                        // Validate the complete batch before removing anything, including unloaded descendants.
+                        var blocked = false;
+                        selected.each(function() {
+                            var beforeDelete = $.Event('formgrid:beforedelete');
+                            node.grid.triggerHandler(beforeDelete, [$(this)]);
+                            if (beforeDelete.isDefaultPrevented()) { blocked = true; return false; }
+                        });
+                        if (blocked) return;
+                        var messages = node.grid.data('formGridMessages') || {};
+                        if (!confirm(messages['form.formgrid.bulkDeleteMessage'] || 'Delete selected rows?')) return;
+                        deletingSelection = true;
+                        try {
+                            selected.each(function() { $(this).formGridCustom('deleteRow', true); });
+                        } finally { deletingSelection = false; refresh(); }
+                    }).on('click.formGridNested', function(event) { event.stopPropagation(); });
+                    if (showCheckbox) headingActions.prepend(deleteSelected);
+                    function updateSelection() {
+                        var count = selectable.filter(function() { return state.selected.has(this); }).length;
+                        selectAll.prop({checked: selectable.length > 0 && count === selectable.length,
+                            indeterminate: count > 0 && count < selectable.length, disabled: selectable.length === 0});
+                        deleteSelected.prop('hidden', count === 0);
+                    }
+                    selectAll.on('click.formGridNested', function(event) { event.stopPropagation(); })
+                        .on('change.formGridNested', function(event) {
+                            event.stopPropagation();
+                            var checked = this.checked;
+                            selectable.each(function() { if (checked) state.selected.add(this); else state.selected.delete(this); });
+                            body.children('.formgrid-nested-row').find('.formgrid-nested-select-row:not(:disabled)').prop('checked', checked);
+                            updateSelection();
+                        });
                     var search = node.grid.children('.formgrid-search').clone();
                     if (search.length && $.formGridSearch) {
                         search.find('.formgrid-search-input').val(state.query || '')
@@ -406,6 +450,13 @@
                             // The table already supplies an empty-state row for related records.
                             search.find('.formgrid-search-empty').prop('hidden', true);
                         }
+                        selectable = showCheckbox ? matched.filter(function() {
+                            return $(this).children('td').find('.grid-checkbox-children:not(:disabled)').length > 0;
+                        }) : $();
+                        var allowed = new Set(selectable.get());
+                        // Search and grid filters drop hidden choices; paging and collapse retain them.
+                        state.selected.forEach(function(row) { if (!allowed.has(row)) state.selected.delete(row); });
+                        updateSelection();
                         var pageSize = matched.length <= paginationThreshold ? Math.max(paginationThreshold, matched.length, 1) : state.size;
                         var pages = Math.max(1, Math.ceil(matched.length / pageSize));
                         state.page = Math.max(1, Math.min(state.page, pages));
@@ -416,6 +467,19 @@
                         matched.slice(start, end).each(function(offset) {
                             var index = start + offset;
                             var source = $(this), view = $('<tr class="formgrid-nested-row">');
+                            if (showCheckbox) {
+                                var sourceCheckbox = source.children('td').find('.grid-checkbox-children').first();
+                                view.append($('<td class="formgrid-nested-checkbox-cell">').append(
+                                    $('<input type="checkbox" class="formgrid-nested-select-row">')
+                                        .attr('aria-label', sourceCheckbox.attr('aria-label') || 'Select Row')
+                                        .prop({checked: state.selected.has(this), disabled: !allowed.has(this)})
+                                        .on('click.formGridNested', function(event) { event.stopPropagation(); })
+                                        .on('change.formGridNested', function(event) {
+                                            event.stopPropagation();
+                                            if (this.checked) state.selected.add(source[0]); else state.selected.delete(source[0]);
+                                            updateSelection();
+                                        })));
+                            }
                             if (showNumber) view.append($('<td class="formgrid-nested-row-number">').text(index + 1));
                             var editable = canWrite(node.grid) && node.grid.data('formGridEditableApi');
                             fields.forEach(function(field) {
@@ -519,6 +583,7 @@
                 node.grid.on('change.formGridNested', function(event, change) {
                     if (event.target !== node.grid[0]) return;
                     if (id !== rootId) node.grid.closest('.form-cell').children('label').find('.form-error-message').remove();
+                    if (deletingSelection) return;
                     // Rebuilding on every keystroke would remove the focused nested editor.
                     if (id !== rootId && change && change.editableRow && !change.editableFile) { error(validateData()); return; }
                     refresh();

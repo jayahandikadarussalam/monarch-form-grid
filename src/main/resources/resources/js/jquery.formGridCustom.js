@@ -9,6 +9,7 @@
 
             return this.each(function(){
                 var thisObj = $(this);
+                thisObj.data('formGridMessages', args.messages);
                 $(this).children("table").data("options", args.options);
 
                 if (jQuery.browser && jQuery.browser.msie && jQuery.browser.version === '9.0'){

@@ -1,5 +1,17 @@
 # Changelog
 
+## [2.17.1] - 2026-11-16
+
+### Diperbaiki
+- Tombol hapus massal nested memakai tampilan ikon delete yang sama dengan grid utama: tanpa border, latar transparan, ukuran dan warna konsisten, serta indikator fokus keyboard.
+
+## [2.17.0] - 2026-11-16
+
+### Ditambahkan
+- Checkbox per baris, Select All, dan Delete Selected Rows pada setiap level nested subgrid, mengikuti Disable Checkbox, Disable Delete dan izin tulis child grid maupun readonly root.
+- Pilihan terisolasi per parent dan level, bertahan saat paging, collapse dan sorting. Select All mencakup seluruh halaman hasil pencarian parent terkait; baris tersembunyi atau disabled tidak ikut dipilih.
+- Hapus massal memakai satu konfirmasi dan memeriksa seluruh pilihan sebelum menghapus. Baris yang masih memiliki child atau belum diperiksa melalui lazy loading tetap dilindungi; submit form tetap diperlukan untuk menyimpan perubahan.
+
 ## [2.16.1] - 2026-11-13
 
 ### Diperbaiki

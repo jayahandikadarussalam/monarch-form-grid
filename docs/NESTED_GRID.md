@@ -82,6 +82,14 @@ Example for the supplied Area setup: relation `areasGrid` → **Sort with Button
 
 The main grid uses **UI → Duplicate → Duplicate Mode** with the same choices: **Default** (`false`) copies immediately, and **Popup Dialog** (`true`) opens its Form first. Existing checkbox values retain these meanings; blank values default to immediate copying. Unique Column still receives a copy suffix and is validated in Default mode. **Disable Duplicate** remains a separate main-grid checkbox; checking it hides Duplicate Mode, and unchecking it shows the mode selector again. Each nested relation keeps its own selected mode.
 
+## Select and delete nested rows
+
+Each nested table provides row checkboxes, **Select All Rows**, and a **Delete Selected Rows** trash button in its heading. Leave **UI → Grid → Disable Checkbox** and **Disable Delete Feature** unchecked on the referenced child grid. Checkboxes are hidden when the child or root is readonly, including denied write permission. No extra nested relation property is needed.
+
+Select All includes eligible rows across all pages of the current parent's child table, limited by its search and other filters. Selections are independent for each parent and level and survive paging, collapse/expand, and sorting. Changing a search or filter drops excluded selections; disabled rows are never selected. The header shows a partial check when only some eligible rows are selected.
+
+The trash button appears when rows are selected and asks for one bulk-delete confirmation. Before removing any selected row, the grid checks the complete selection: a row with related children must have those children deleted first, and a row with unchecked lazy descendants must be expanded to load them first. A blocked selection leaves the whole batch intact. Save/submit the containing form to persist deletions through the child grid's store binder.
+
 ## Import into a nested subgrid
 
 On each child Shadow Form Grid in Design, enable **Import Data → Enable Excel / CSV Import** and configure its **Columns** and load/store binders. After saving the Builder and reloading the form, expand the parent rows until the child table is visible. Its heading shows **Import Excel / CSV** beside **Add**. Import stays unavailable while lazy rows load and is hidden for readonly roots/children or Disable Add.
