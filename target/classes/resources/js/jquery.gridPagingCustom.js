@@ -68,7 +68,8 @@
                 }).on('keydown.gridPagingCustom', function(event) {
                     if (event.key === 'Enter') event.preventDefault();
                 });
-                thisObj.off('formgrid:rowupdated.gridPagingCustom').on('formgrid:rowupdated.gridPagingCustom', function() {
+                thisObj.off('formgrid:rowupdated.gridPagingCustom').on('formgrid:rowupdated.gridPagingCustom', function(event, row, context) {
+                    if (context && context.batch) return;
                     if (search.length) methods.refresh.call(thisObj);
                 });
 

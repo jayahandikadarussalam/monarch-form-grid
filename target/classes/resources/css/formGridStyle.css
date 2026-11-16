@@ -1,4 +1,6 @@
 /* Let the active Joget theme supply colors, typography, borders and buttons. */
+.formgrid-sync-status:not([hidden]) { margin: 0 0 12px; }
+.formgrid-sync-status[hidden] { display: none !important; }
 .formgrid-builder-info { display: flex; flex-wrap: wrap; gap: 4px 16px; margin: 0 0 8px; font-size: 12px; color: #6b7280; }
 .formgrid-builder-info code { font-size: inherit; }
 .grid.formgrid-custom .formgrid-search { margin: 0 0 12px; }

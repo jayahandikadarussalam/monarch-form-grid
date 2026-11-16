@@ -107,7 +107,7 @@
                             var row = table.find('tr.grid-row-template').first().clone().removeAttr('id')
                                 .removeClass('grid-row-template').addClass('grid-row').show();
                             $.formGridCustom.decorateRow(row);
-                            $.formGridCustom.fillValue(node.grid, row, JSON.stringify(data));
+                            $.formGridCustom.fillValue(node.grid, row, JSON.stringify(data), {existing: true});
                             table.children('tbody').first().append(row);
                             existing.add(text(data.id));
                         });
@@ -151,6 +151,9 @@
                         });
                     });
                     var sourceError = node.grid.children('.grid-validation-error');
+                    node.grid.children('.formgrid-sync-status:not([hidden])').each(function() {
+                        if ($(this).text().trim()) problems.push(id + ': ' + $(this).text().trim());
+                    });
                     if (id !== rootId && sourceError.css('display') !== 'none' && sourceError.text().trim())
                         problems.push(id + ': ' + sourceError.text().trim());
                     if (id !== rootId) node.grid.closest('.form-cell').children('label').find('.form-error-message').each(function() {
@@ -589,7 +592,8 @@
                     refresh();
                 });
                 node.grid.on('formgrid:validationerror.formGridNested', function() { error(validateData()); });
-                node.grid.on('formgrid:rowupdated.formGridNested', function() {
+                node.grid.on('formgrid:rowupdated.formGridNested', function(event, row, context) {
+                    if (context && context.batch) return;
                     clearTimeout(refreshTimer);
                     refreshTimer = setTimeout(refresh, 0);
                 });

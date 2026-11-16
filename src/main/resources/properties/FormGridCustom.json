@@ -478,6 +478,40 @@
       }]
   },
   {
+    "title": "Field Synchronization",
+    "properties": [
+      {
+        "name": "enableFieldSync", "label": "Enable On Change Sync", "type": "checkbox", "value": "false",
+        "description": "Update mapped row fields when a field in the containing main form changes, without reloading the page. Save the form to persist changes. Configure each nested child grid separately.",
+        "options": [{"value": "true", "label": ""}]
+      },
+      {
+        "name": "fieldSyncMappings", "label": "Field Mapping", "type": "grid",
+        "control_field": "enableFieldSync", "control_value": "true",
+        "description": "Use Form Field IDs, without c_ prefixes. Select fields in the same form/subform scope. Get Value copies stored option values; Get Label copies selected option text (text inputs keep their entered value). Select compatible target fields; IDs, nested relation keys, sort, readonly, encrypted and file fields cannot be targets. Always follow main form overwrites mapped values on source changes, including rows on other pages. New rows use the latest source values.",
+        "columns": [
+          {"key": "source", "label": "Main Form Field", "required": "True", "options_callback": "FormBuilder.getFieldOptions"},
+          {"key": "target", "label": "Grid Field", "required": "True", "type": "autocomplete", "options_ajax_on_change": "formDefId", "options_ajax": "[CONTEXT_PATH]/web/json/console/app[APP_PATH]/form/columns/options"},
+          {"key": "mode", "label": "Update Mode", "type": "selectbox", "value": "always", "options": [
+            {"value": "always", "label": "Always follow main form"}, {"value": "empty", "label": "Only if target is empty"}
+          ]},
+          {"key": "empty", "label": "When Source Empty", "type": "selectbox", "value": "clear", "options": [
+            {"value": "clear", "label": "Clear target"}, {"value": "keep", "label": "Keep current value"}
+          ]},
+          {"key": "get", "label": "Get", "type": "selectbox", "value": "value", "options": [
+            {"value": "value", "label": "Value"}, {"value": "label", "label": "Label"}
+          ]}
+        ]
+      },
+      {
+        "name": "fieldSyncOnLoad", "label": "Sync on Form Load", "type": "checkbox", "value": "false",
+        "control_field": "enableFieldSync", "control_value": "true",
+        "description": "Also apply mappings to existing rows when the form opens and when existing nested rows are loaded. Leave unchecked to preserve existing values until their source changes.",
+        "options": [{"value": "true", "label": ""}]
+      }
+    ]
+  },
+  {
     "title" : "@@form.listgrid.advanced@@",
     "properties" : [{
       "name" : "requestParams",

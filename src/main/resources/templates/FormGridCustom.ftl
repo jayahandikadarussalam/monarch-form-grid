@@ -5,15 +5,16 @@
 
 <div class="form-cell full_width_field" ${elementMetaData!}>
     <#if !(request.getAttribute("com.monarch.shadow.lib.FormGridCustom")??) >
-        <link rel="stylesheet" type="text/css" href="${request.contextPath}/plugin/com.monarch.shadow.lib.FormGridCustom/css/formGridStyle.css?v=${pluginVersion!'2.17.1'}" />
-        <script type="text/javascript" src="${request.contextPath}/plugin/com.monarch.shadow.lib.FormGridCustom/js/jquery.formGridCustom.js?v=${pluginVersion!'2.17.1'}"></script>
-        <script type="text/javascript" src="${request.contextPath}/plugin/com.monarch.shadow.lib.FormGridCustom/js/jquery.gridPagingCustom.js?v=${pluginVersion!'2.17.1'}"></script>
-        <script type="text/javascript" src="${request.contextPath}/plugin/com.monarch.shadow.lib.FormGridCustom/js/jquery.formGridCustom.remake.js?v=${pluginVersion!'2.17.1'}"></script>
-        <script type="text/javascript" src="${request.contextPath}/plugin/com.monarch.shadow.lib.FormGridCustom/js/jquery.formGridEditable.js?v=${pluginVersion!'2.17.1'}"></script>
-        <script type="text/javascript" src="${request.contextPath}/plugin/com.monarch.shadow.lib.FormGridCustom/js/jquery.formGridNested.js?v=${pluginVersion!'2.17.1'}"></script>
-        <script type="text/javascript" src="${request.contextPath}/plugin/com.monarch.shadow.lib.FormGridCustom/js/jquery.utils.js?v=${pluginVersion!'2.17.1'}"></script>
-        <script type="text/javascript" src="${request.contextPath}/plugin/com.monarch.shadow.lib.FormGridCustom/js/formGridImport.js?v=${pluginVersion!'2.17.1'}"></script>
-        <script type="text/javascript" src="${request.contextPath}/plugin/com.monarch.shadow.lib.FormGridCustom/js/jquery.formGridImport.js?v=${pluginVersion!'2.17.1'}"></script>
+        <link rel="stylesheet" type="text/css" href="${request.contextPath}/plugin/com.monarch.shadow.lib.FormGridCustom/css/formGridStyle.css?v=${pluginVersion!'2.18.2'}" />
+        <script type="text/javascript" src="${request.contextPath}/plugin/com.monarch.shadow.lib.FormGridCustom/js/jquery.formGridCustom.js?v=${pluginVersion!'2.18.2'}"></script>
+        <script type="text/javascript" src="${request.contextPath}/plugin/com.monarch.shadow.lib.FormGridCustom/js/jquery.gridPagingCustom.js?v=${pluginVersion!'2.18.2'}"></script>
+        <script type="text/javascript" src="${request.contextPath}/plugin/com.monarch.shadow.lib.FormGridCustom/js/jquery.formGridCustom.remake.js?v=${pluginVersion!'2.18.2'}"></script>
+        <script type="text/javascript" src="${request.contextPath}/plugin/com.monarch.shadow.lib.FormGridCustom/js/jquery.formGridEditable.js?v=${pluginVersion!'2.18.2'}"></script>
+        <script type="text/javascript" src="${request.contextPath}/plugin/com.monarch.shadow.lib.FormGridCustom/js/jquery.formGridNested.js?v=${pluginVersion!'2.18.2'}"></script>
+        <script type="text/javascript" src="${request.contextPath}/plugin/com.monarch.shadow.lib.FormGridCustom/js/jquery.formGridSync.js?v=${pluginVersion!'2.18.2'}"></script>
+        <script type="text/javascript" src="${request.contextPath}/plugin/com.monarch.shadow.lib.FormGridCustom/js/jquery.utils.js?v=${pluginVersion!'2.18.2'}"></script>
+        <script type="text/javascript" src="${request.contextPath}/plugin/com.monarch.shadow.lib.FormGridCustom/js/formGridImport.js?v=${pluginVersion!'2.18.2'}"></script>
+        <script type="text/javascript" src="${request.contextPath}/plugin/com.monarch.shadow.lib.FormGridCustom/js/jquery.formGridImport.js?v=${pluginVersion!'2.18.2'}"></script>
     </#if>
     <script type="text/javascript">
         $(document).ready(function() {
@@ -34,6 +35,11 @@
             grid.formGridCustom("initPopupDialog", {contextPath: '${request.contextPath}', title: '@@form.formgrid.addEntry@@' <#if requestParams??>, requestParams: ${requestParams}</#if>});
 
             grid.gridPagingCustom({customSize: '${element.properties.pageSize!}' <#if element.properties.enableSorting! == 'true'>, dataSorting: true</#if>});
+            <#if (fieldSyncEnabled!false) && !builderDesign>
+                setTimeout(function() {
+                    grid.formGridSync(JSON.parse(grid.children('.formgrid-sync-config').val()));
+                }, 0);
+            </#if>
             <#if (nestedEnabled!false) && !builderDesign>
                 setTimeout(function() {
                     grid.formGridNested({relations: JSON.parse(grid.children('.formgrid-nested-config').val()), readonly: ${(nestedReadonly!false)?c}});
@@ -46,7 +52,7 @@
                 grid.formGridImport({
                     columns: JSON.parse(grid.children('.formgrid-import-columns').val()),
                     sortField: '<#if element.properties.enableSorting! == "true">${element.properties.sortField!?js_string}</#if>',
-                    libraryUrl: '${request.contextPath}/plugin/com.monarch.shadow.lib.FormGridCustom/js/vendor/xlsx.full.min.js?v=${pluginVersion!"2.17.1"}'
+                    libraryUrl: '${request.contextPath}/plugin/com.monarch.shadow.lib.FormGridCustom/js/vendor/xlsx.full.min.js?v=${pluginVersion!"2.18.2"}'
                 });
             </#if>
         });
@@ -73,6 +79,9 @@
         </#if>
         <input type="hidden" disabled="disabled" class="formgrid-field-id" value="${element.properties.id!?html}">
         <input type="hidden" disabled="disabled" class="formgrid-field-label" value="${element.properties.label!?html}">
+        <#if fieldSyncEnabled!false>
+            <input type="hidden" disabled="disabled" class="formgrid-sync-config" value="${fieldSyncConfigJson!?html}">
+        </#if>
         <#if nestedLoadToken?? && nestedLoadToken?has_content>
             <input type="hidden" disabled="disabled" class="formgrid-nested-load" value="${nestedLoadToken?html}" data-url="${request.contextPath}/web/json/plugin/com.monarch.shadow.lib.FormGridCustom/service">
             <input type="hidden" class="formgrid-nested-loaded" name="${elementParamName!}_nested_loaded" value="[]">

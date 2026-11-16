@@ -1,5 +1,25 @@
 # Changelog
 
+## [2.18.2] - 2026-11-16
+
+### Diperbaiki
+- Kolom No. tidak lagi kosong setelah sinkronisasi on change atau pengisian ulang baris. Nomor urut tetap dikelola oleh grid, terpisah dari JSON data baris.
+- Pengujian mencakup Sync on Form Load, Get Value/Label, perubahan field utama, editor grid, paging dan nomor nested per parent.
+
+## [2.18.1] - 2026-11-16
+
+### Ditambahkan
+- Pilihan Get: Value atau Label pada setiap Field Mapping. Mapping lama tetap memakai Value. Satu sumber dapat mengisi field kode dan nama melalui mapping terpisah.
+- Get Label mengambil teks pilihan combobox, multiselect, radio dan checkbox; input teks memakai isi yang diketik. Placeholder kosong mengikuti When Source Empty. Baris baru dan nested lazy load mengikuti pilihan Get yang sama.
+
+## [2.18.0] - 2026-11-16
+
+### Ditambahkan
+- Properties Field Synchronization: Enable On Change Sync, Field Mapping, Update Mode, When Source Empty dan Sync on Form Load.
+- Perubahan field utama memperbarui tampilan, editor dan JSON seluruh baris grid tanpa reload, dengan pilihan overwrite atau hanya mengisi target kosong. Mendukung combobox, radio, checkbox, multiselect dan input teks.
+- Baris baru, duplikasi, import dan nested lazy load mengikuti mapping; data lama dapat dipertahankan sampai sumber berubah. Pilihan awal, scope subform, readonly, metadata request dan relasi nested tetap diperhatikan.
+- Validasi mapping menolak ID, key relasi, sort, readonly, terenkripsi dan file sebagai target. Error child tersembunyi ditampilkan pada root; submit menunggu pembaruan teks yang tertunda.
+
 ## [2.17.1] - 2026-11-16
 
 ### Diperbaiki

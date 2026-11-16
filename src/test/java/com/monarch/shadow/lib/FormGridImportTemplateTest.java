@@ -48,6 +48,11 @@ public class FormGridImportTemplateTest {
 
     private String render(boolean enabled, boolean readonly, String previewPageSize, boolean editable, boolean nested,
                           boolean nestedSource, String sorting, String rowNumbers, boolean builderDesign, String enableSearch) throws Exception {
+        return render(enabled, readonly, previewPageSize, editable, nested, nestedSource, sorting, rowNumbers, builderDesign, enableSearch, null);
+    }
+
+    private String render(boolean enabled, boolean readonly, String previewPageSize, boolean editable, boolean nested,
+                          boolean nestedSource, String sorting, String rowNumbers, boolean builderDesign, String enableSearch, String syncConfig) throws Exception {
         Configuration config = new Configuration();
         config.setTemplateExceptionHandler(TemplateExceptionHandler.RETHROW_HANDLER);
         Template template = new Template("FormGridCustom.ftl", new InputStreamReader(
@@ -79,6 +84,8 @@ public class FormGridImportTemplateTest {
         model.put("nestedEnabled", nested);
         model.put("nestedSource", nestedSource);
         model.put("nestedReadonly", readonly);
+        model.put("fieldSyncEnabled", syncConfig != null);
+        if (syncConfig != null) model.put("fieldSyncConfigJson", syncConfig);
         model.put("nestedRelationsJson", "[{\"gridId\":\"areas\",\"label\":\"Areas <script> & \\\"quoted\\\"\",\"foreignKey\":\"plantId\"}]");
         model.put("editableColumnsJson", "[{\"id\":\"name\",\"label\":\"Name & <Label>\",\"editor\":\"TextField\"}]");
         model.put("importLabels", new FormGridCustom().getImportLabels());
@@ -86,6 +93,17 @@ public class FormGridImportTemplateTest {
         StringWriter out = new StringWriter();
         template.process(model, out);
         return out.toString();
+    }
+
+    @Test
+    public void fieldSyncIsOptInAndEscapesConfigurationWithoutRunningInDesignCanvas() throws Exception {
+        assertFalse(render(false, false).contains("grid.formGridSync("));
+        String config = "{\"mappings\":[{\"source\":\"dept\",\"target\":\"department\"}],\"error\":\"<script>&\\\"\"}";
+        String html = render(false, false, null, false, false, false, "", "", false, null, config);
+        assertTrue(html.contains("grid.formGridSync(JSON.parse(grid.children('.formgrid-sync-config').val()))"));
+        assertTrue(html.contains("&lt;script&gt;&amp;"));
+        assertTrue(html.contains("jquery.formGridSync.js?v="));
+        assertFalse(render(false, false, null, false, false, false, "", "", true, null, config).contains("grid.formGridSync("));
     }
 
     @Test

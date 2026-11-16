@@ -46,7 +46,7 @@ import org.joget.plugin.base.PluginWebSupport;
 
 public class FormGridCustom extends Element implements FormBuilderPaletteElement, FormContainer, GridInnerDataRetriever, PwaOfflineResources, PwaOfflineReadonly, PluginWebSupport {
     private static final String MESSAGE_PATH = "messages/FormGridCustom";
-    private static final String VERSION = "2.17.1";
+    private static final String VERSION = "2.18.2";
 
     protected Map<FormData, FormRowSet> cachedRowSet = new HashMap<>();
     protected Map<String, FormData> formDatas = new HashMap<>();
@@ -86,6 +86,9 @@ public class FormGridCustom extends Element implements FormBuilderPaletteElement
         dataModel.put("nestedSource", getNestedRelation() != null);
         dataModel.put("nestedReadonly", FormUtil.isReadonly(this, formData));
         if (nested) dataModel.put("nestedRelationsJson", getNestedRelationsJson());
+        boolean fieldSync = "true".equals(getPropertyString("enableFieldSync")) && !FormUtil.isReadonly(this, formData);
+        dataModel.put("fieldSyncEnabled", fieldSync);
+        if (fieldSync) dataModel.put("fieldSyncConfigJson", getFieldSyncConfigJson(formData));
 
         dataModel.put("rows", getRows(formData));
         if (nestedLoadBinder != null) dataModel.put("nestedLoadToken", nestedLoadBinder.token(formData));
@@ -230,6 +233,87 @@ public class FormGridCustom extends Element implements FormBuilderPaletteElement
             columns.put(column);
         }
         return columns.toString();
+    }
+
+    protected String getFieldSyncConfigJson(FormData data) {
+        JSONObject config = new JSONObject();
+        config.put("syncOnLoad", "true".equals(getPropertyString("fieldSyncOnLoad")));
+        JSONArray mappings = new JSONArray();
+        try {
+            Element scope = getParent();
+            while (scope != null && !(scope instanceof Form)) scope = scope.getParent();
+            Form inner = getForm();
+            Set<String> protectedFields = new HashSet<>(Arrays.asList("id", "dateCreated", "dateModified", "createdBy",
+                    "createdByName", "modifiedBy", "modifiedByName", "constructor", "prototype"));
+            protectedFields.add(getEffectiveSortField());
+            if (scope != null) {
+                Deque<Element> pending = new ArrayDeque<>();
+                pending.add(scope);
+                while (!pending.isEmpty()) {
+                    Element candidate = pending.removeFirst();
+                    if (candidate instanceof FormGridCustom && "true".equals(candidate.getPropertyString("enableNested"))) {
+                        JSONArray relations = new JSONArray(((FormGridCustom) candidate).getNestedRelationsJson());
+                        for (int i = 0; i < relations.length(); i++) {
+                            JSONObject relation = relations.getJSONObject(i);
+                            if (getPropertyString("id").equals(relation.getString("gridId"))) protectedFields.add(relation.getString("foreignKey"));
+                            String parentId = relation.getString("parentGridId");
+                            if (getPropertyString("id").equals(parentId) || (parentId.isEmpty() && candidate == this))
+                                protectedFields.add(relation.optString("parentKey", "id"));
+                        }
+                    }
+                    if (candidate != scope && candidate instanceof Form) continue;
+                    if (candidate.getChildren() != null) pending.addAll(candidate.getChildren());
+                }
+            }
+            Object configured = getProperty("fieldSyncMappings");
+            Collection<?> entries = configured instanceof Object[] ? Arrays.asList((Object[]) configured) :
+                    configured instanceof Collection ? (Collection<?>) configured : Collections.emptyList();
+            Set<String> targets = new HashSet<>();
+            for (Object item : entries) {
+                if (!(item instanceof Map)) throw new IllegalArgumentException("Invalid field mapping.");
+                Map<?, ?> values = (Map<?, ?>) item;
+                String source = Objects.toString(values.get("source"), "").trim();
+                String target = Objects.toString(values.get("target"), "").trim();
+                String mode = Objects.toString(values.get("mode"), "").trim();
+                String empty = Objects.toString(values.get("empty"), "").trim();
+                String get = Objects.toString(values.get("get"), "").trim();
+                if (mode.isEmpty()) mode = "always";
+                if (empty.isEmpty()) empty = "clear";
+                if (get.isEmpty()) get = "value";
+                if (!source.matches("[a-zA-Z0-9_]+") || !target.matches("[a-zA-Z0-9_]+") || target.startsWith("_"))
+                    throw new IllegalArgumentException("Use Form Field IDs without c_ prefixes or selectors.");
+                if (!Arrays.asList("always", "empty").contains(mode) || !Arrays.asList("clear", "keep").contains(empty))
+                    throw new IllegalArgumentException("Invalid update mode or empty-source behavior.");
+                if (!Arrays.asList("value", "label").contains(get)) throw new IllegalArgumentException("Invalid Get option. Choose Value or Label.");
+                if (protectedFields.contains(target)) throw new IllegalArgumentException("Managed field cannot be a sync target: " + target);
+                if (!targets.add(target)) throw new IllegalArgumentException("Duplicate sync target: " + target);
+                Element sourceField = scope == null ? null : FormUtil.findElement(source, scope, data);
+                Element targetField = inner == null ? null : FormUtil.findElement(target, inner, data);
+                if (sourceField == null) throw new IllegalArgumentException("Main Form Field not found: " + source);
+                for (Element parent = sourceField; parent != null && parent != scope; parent = parent.getParent())
+                    if (parent instanceof FormGridCustom) throw new IllegalArgumentException("Source must be a main form field: " + source);
+                if (targetField == null) throw new IllegalArgumentException("Grid Field not found: " + target);
+                if (FormUtil.isReadonly(targetField, data) || "true".equalsIgnoreCase(targetField.getPropertyString("encryption")) ||
+                        targetField.getClassName().endsWith(".FileUpload"))
+                    throw new IllegalArgumentException("Readonly, encrypted or file fields cannot be sync targets: " + target);
+                JSONObject mapping = new JSONObject();
+                mapping.put("source", source);
+                mapping.put("sourceParam", FormUtil.getElementParameterName(sourceField));
+                mapping.put("target", target);
+                mapping.put("targetParam", FormUtil.getElementParameterName(targetField));
+                mapping.put("multiple", "true".equals(targetField.getPropertyString("multiple")) ||
+                        "org.joget.apps.form.lib.CheckBox".equals(targetField.getClassName()));
+                mapping.put("mode", mode);
+                mapping.put("empty", empty);
+                mapping.put("get", get);
+                mappings.put(mapping);
+            }
+            if (mappings.length() == 0) throw new IllegalArgumentException("Add at least one Field Mapping.");
+        } catch (IllegalArgumentException problem) {
+            config.put("error", "Field Synchronization: " + problem.getMessage());
+        }
+        config.put("mappings", mappings);
+        return config.toString();
     }
 
     // Only expose editors for known field implementations. Custom plugins retain their popup editor.
@@ -1826,6 +1910,7 @@ public class FormGridCustom extends Element implements FormBuilderPaletteElement
         urls.add(contextPath + "/plugin/com.monarch.shadow.lib.FormGridCustom/js/jquery.formGridCustom.remake.js?v=" + getVersion());
         urls.add(contextPath + "/plugin/com.monarch.shadow.lib.FormGridCustom/js/jquery.formGridEditable.js?v=" + getVersion());
         urls.add(contextPath + "/plugin/com.monarch.shadow.lib.FormGridCustom/js/jquery.formGridNested.js?v=" + getVersion());
+        urls.add(contextPath + "/plugin/com.monarch.shadow.lib.FormGridCustom/js/jquery.formGridSync.js?v=" + getVersion());
         urls.add(contextPath + "/plugin/com.monarch.shadow.lib.FormGridCustom/js/jquery.utils.js?v=" + getVersion());
         urls.add(contextPath + "/plugin/com.monarch.shadow.lib.FormGridCustom/js/formGridImport.js?v=" + getVersion());
         urls.add(contextPath + "/plugin/com.monarch.shadow.lib.FormGridCustom/js/jquery.formGridImport.js?v=" + getVersion());

@@ -156,6 +156,24 @@ Aktifkan checkbox **Enable Search** di properties **UI > Grid** untuk menampilka
 
 Pagination mengikuti hasil pencarian. Baris yang tidak cocok tidak ikut pemilihan atau hapus massal; semua data tetap dikirim ketika form disimpan. Pencarian juga tersedia pada mode readonly. Untuk nested subgrid, aktifkan Enable Search di child grid; pencarian berlaku pada record terkait dan terpisah untuk setiap parent. Data nested dimuat saat parent dibuka.
 
+## Field Synchronization
+
+Mulai versi 2.18.0, buka properties **Field Synchronization**, lalu aktifkan **Enable On Change Sync**. Tambahkan **Field Mapping** dari **Main Form Field** ke **Grid Field**. Contoh untuk combobox departemen:
+
+| Main Form Field | Grid Field | Update Mode | When Source Empty | Get |
+| --- | --- | --- | --- | --- |
+| `dept` | `dept` | Always follow main form | Clear target | Value |
+
+Perubahan pilihan `dept` langsung memperbarui seluruh baris grid tanpa refresh halaman, termasuk halaman lain dan baris yang tersembunyi oleh search/filter. Pilihan **Get** menentukan isi yang disalin: **Value** (default, termasuk mapping lama) mengambil stored value seperti `FIN`, sedangkan **Label** mengambil teks pilihan seperti `Finance`. Satu sumber bisa dipetakan ke field kode dan field nama melalui dua mapping berbeda. Get Label mendukung combobox, multiselect, radio dan checkbox; untuk input teks, yang disalin tetap teks yang diketik. Banyak pilihan digabung dengan `;`. Sumber kosong tetap mengikuti When Source Empty, tanpa menyalin label placeholder.
+
+Untuk Get Value, samakan nilai opsi di kedua Form. Untuk Get Label, gunakan target teks/hidden atau target pilihan yang menerima label tersebut sebagai value. Label disimpan sebagai isi field tujuan, termasuk di JSON dan request parameter baris. Baris baru, duplikasi dan hasil import mengikuti nilai sumber terbaru. Tampilan, editor inline, dan JSON yang dikirim ikut diperbarui; **submit form** tetap diperlukan untuk menyimpan ke database. **Request Parameters** tetap dapat digunakan untuk mengisi field di popup Add/Edit.
+
+**Always follow main form** menimpa field tujuan saat sumber berubah. **Only if target is empty** mempertahankan nilai yang sudah terisi. **When Source Empty** menentukan apakah target dikosongkan atau nilai sebelumnya dipertahankan. Default **Sync on Form Load** nonaktif: data lama tetap dipertahankan sampai sumber berubah. Aktifkan jika data lama juga perlu disamakan saat form dibuka.
+
+Untuk nested, aktifkan dan atur mapping di masing-masing child grid. Setelah sumber berubah, child yang dimuat belakangan ikut memakai nilai terbaru. Cabang yang belum pernah dimuat tetap dipertahankan oleh binder; sinkronisasi ini tidak melakukan pembaruan massal ke record database yang belum dibuka. Sumber harus berada pada form/subform yang sama dengan grid. Gunakan Field ID tanpa awalan database `c_`; target bisa berupa field tersembunyi. Field ID, key relasi nested, sort, readonly, terenkripsi dan file tidak dapat menjadi target. Pilih tipe dan format field yang kompatibel, termasuk format penyimpanan tanggal.
+
+Combobox memakai event `change`; input teks memakai jeda 200 ms dan langsung diselesaikan saat submit. Jika script mengubah sumber lewat `.val(...)`, panggil `.trigger('change')` agar grid ikut diperbarui saat itu juga. Fitur nonaktif pada Design canvas dan grid readonly. Kesalahan mapping ditampilkan pada form dan mencegah submit sampai diperbaiki.
+
 ## Nested Subgrids
 
 Version 2.12.0 supports dynamic nested parent/child grids. See [Nested Grid setup and foreign keys](docs/NESTED_GRID.md) for the Plant → Area → Equipment Group → Equipment Type → Tags → Parameter example and binder configuration.

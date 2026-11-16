@@ -24,7 +24,7 @@ function setup(relations = [{gridId:'areas',foreignKey:'parentId'},{gridId:'type
     window.UI = {escapeHTML:value=>$('<span>').text(value == null ? '' : value).html(),userviewThemeParams:()=>''};
     window.JPopup = {hide(){},show(...args){popups.push(args);}};
     window.confirm = ()=>true;
-    for (const file of ['jquery.formGridCustom.js','jquery.utils.js','jquery.formGridCustom.remake.js','jquery.gridPagingCustom.js','jquery.formGridEditable.js','formGridImport.js','jquery.formGridImport.js','jquery.formGridNested.js']) window.eval(fs.readFileSync(path.join(base,file),'utf8'));
+    for (const file of ['jquery.formGridCustom.js','jquery.utils.js','jquery.formGridCustom.remake.js','jquery.gridPagingCustom.js','jquery.formGridEditable.js','formGridImport.js','jquery.formGridImport.js','jquery.formGridNested.js','jquery.formGridSync.js']) window.eval(fs.readFileSync(path.join(base,file),'utf8'));
     const grid=id=>$('#grid_'+id);
     $('.formgrid-custom').formGridCustom({messages:{},options:{}});
     function add(id,data) {grid(id).formGridCustom('addRow',{result:JSON.stringify(data)}); return grid(id).children('table').find('tr.grid-row').last();}
@@ -920,6 +920,75 @@ function lazySeed(requests) {
         }
     };
 }
+test('main form sync updates visible nested editors and unopened siblings while preserving parent links',t=>{
+    const s=setup(undefined,{seed({grid}){
+        grid('plants').closest('form').prepend('<select name="dept"><option value="IT">IT</option><option value="FIN">Finance</option></select>');
+        inlineFields(grid('areas'),[{id:'name',editor:'TextField'}]);
+    }});t.after(()=>s.dom.window.close());
+    s.grid('areas').formGridSync({mappings:[{source:'dept',target:'name'}]});
+    s.expand(s.first);s.$('[name=dept]').val('FIN').trigger('change');
+    assert.equal(s.first.next().find('.formgrid-editor').first().val(),'FIN');
+    assert.ok(s.grid('areas').getValues().every(row=>row.name==='FIN'));
+    assert.deepEqual(Array.from(s.grid('areas').getValues(),row=>row.parentId),['p1','p2']);
+    s.expand(s.second);assert.equal(s.second.next().find('.formgrid-editor').first().val(),'FIN');
+    s.expand(s.first);s.expand(s.first);assert.equal(s.first.next().find('.formgrid-editor').first().val(),'FIN');
+    assert.equal(s.data(s.first).name,'Plant One');
+});
+test('root and per-parent nested numbers survive simultaneous main form synchronization',t=>{
+    const s=setup(undefined,{seed({grid}){
+        grid('plants').closest('form').prepend('<select name="dept"><option value="IT">IT</option><option value="FIN">Finance</option></select>');
+        for(const id of ['plants','areas']) {
+            const table=grid(id).children('table');
+            table.find('thead > tr').prepend('<th class="formgrid-row-number">No.</th>');
+            table.find('tr.grid-row,tr.grid-row-template').prepend('<td class="formgrid-row-number"><span class="grid-cell rowNumber"></span></td>');
+            grid(id).formGridCustom('refreshIndex');
+        }
+    }});t.after(()=>s.dom.window.close());
+    for(const id of ['plants','areas'])s.grid(id).formGridSync({mappings:[{source:'dept',target:'name',get:'label'}]});
+    s.expand(s.first);s.expand(s.second);
+    for(const value of ['FIN','IT']) {
+        s.$('[name=dept]').val(value).trigger('change');
+        assert.deepEqual(s.grid('plants').children('table').find('tr.grid-row .rowNumber').map(function(){return s.$(this).text();}).get(),['1','2']);
+        for(const row of [s.first,s.second]) {
+            assert.equal(nestedSection(s,row).find('.formgrid-nested-row-number').last().text(),'1');
+            assert.equal(s.data(row).name,value==='FIN'?'Finance':'IT');
+        }
+    }
+});
+test('lazy sync preserves historical rows until a source changes and applies the latest values on later loads',t=>{
+    for(const onLoad of [false,true]) {
+        const requests=[],lazy=lazySeed(requests);
+        const s=setup(undefined,{seed(context){lazy(context);context.grid('plants').closest('form').prepend('<select name="dept"><option value="IT">IT</option><option value="FIN">Finance</option></select>');}});
+        t.after(()=>s.dom.window.close());
+        for(const id of ['areas','types'])s.grid(id).formGridSync({syncOnLoad:onLoad,mappings:[{source:'dept',target:'name'}]});
+        s.expand(s.first);requests[0].deferred.resolve({rows:[{id:'a1',name:'Historical',parentId:'p1'}]});
+        assert.equal(s.grid('areas').getValues()[0].name,onLoad?'IT':'Historical');
+        s.$('[name=dept]').val('FIN').trigger('change');assert.equal(s.grid('areas').getValues()[0].name,'FIN');
+        s.first.next().find('.formgrid-nested-toggle').trigger('click');
+        requests[1].deferred.resolve({rows:[{id:'t1',name:'Old type',parentId:'a1'}]});
+        assert.equal(s.grid('types').getValues()[0].name,'FIN');assert.equal(s.grid('types').getValues()[0].parentId,'a1');
+        s.expand(s.second);requests[2].deferred.resolve({rows:[{id:'a2',name:'Old sibling',parentId:'p2'}]});
+        assert.equal(s.grid('areas').getValues()[1].name,'FIN');assert.match(s.second.next().text(),/FIN/);
+        assert.ok(s.grid('areas').children('.formgrid-nested-loaded').val().includes('p2'));
+    }
+});
+test('hidden child sync errors are visible at the root and prevent saving until the source is available',t=>{
+    const s=setup();t.after(()=>s.dom.window.close());
+    s.grid('areas').formGridSync({mappings:[{source:'missing',target:'name'}]});
+    assert.match(s.grid('plants').children('.formgrid-nested-status').text(),/Main Form Field not found: missing/);
+    const event=s.$.Event('submit');s.$('form').triggerHandler(event);assert.equal(event.isDefaultPrevented(),true);
+    s.$('form').prepend('<input name="missing" value="Available">');s.$('[name=missing]').trigger('change');
+    assert.equal(s.grid('plants').children('.formgrid-nested-status').prop('hidden'),true);
+});
+test('lazy nested Label mappings use the latest selected text instead of the stored code',t=>{
+    const requests=[],lazy=lazySeed(requests);
+    const s=setup(undefined,{seed(context){lazy(context);context.grid('plants').closest('form').prepend('<select name="dept"><option value="IT">Information Technology</option><option value="FIN">Finance</option></select>');}});
+    t.after(()=>s.dom.window.close());s.grid('areas').formGridSync({mappings:[{source:'dept',target:'name',get:'label'}]});
+    s.$('[name=dept]').val('FIN').trigger('change');s.expand(s.first);
+    requests[0].deferred.resolve({rows:[{id:'a1',name:'Old',parentId:'p1'}]});
+    assert.equal(s.grid('areas').getValues()[0].name,'Finance');assert.match(s.first.next().text(),/Finance/);
+    s.$('[name=dept]').val('IT').trigger('change');assert.equal(s.grid('areas').getValues()[0].name,'Information Technology');
+});
 test('slow child loading keeps feedback local and blocks saving until every request settles',t=>{
     const requests=[],s=setup(undefined,{seed:lazySeed(requests)});t.after(()=>s.dom.window.close());
     const root=s.grid('plants'),status=root.children('.formgrid-nested-status');
